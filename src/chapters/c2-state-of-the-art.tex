@@ -1,0 +1,79 @@
+\chapter{State of the Art}
+\label{chapter:state}
+
+\section{Android Filesystem}
+\label{sec:android-filesys}
+
+\subsection{YAFFS}
+\label{sub-sec:yaffs}
+
+Until the end of 2010, most Android devices used the YAFFS filesystem.\footnote{\url{http://arstechnica.com/information-technology/2010/12/ext4-filesystem-hits-android-no-need-to-fear-data-loss/}}
+YAFFS stands for Yet Another Flash File System. It was designed and used for NAND flash storage. The primary concern was even distribution in the number of overwrites. This was due to two factors. First, a NAND page has a limited lifetime. Second, overwriting a NAND page means erasing it and then writing the new data, which incurs a heavy performance drop.
+
+\subsection{ext4}
+\label{sub-sec:ext4}
+
+Since 2010, Android devices have switched from YAFFS storage to ext4, which is tipically used in the Linux kernel. The reason was mainly related to performance, as YAFFS did not support multi-threaded operations, while devices started to contain multi-core processors.
+The downside of using ext4 stood in its buffering mechanism. In the event of a system failure, there was the possibility of data loss.
+
+The migration did not affect the higher levels of the software stack due to the abstraction layer provided provided by the Linux kernel, called the virtual file system (or VFS). The VFS interface presented to the system is the same, regardless of the underlying file system used.
+
+\subsection{eCryptfs}
+\label{sub-sec:ecryptfs}
+
+The two approaches to disk encryption are block-based and file-based. Block encryption means that the actual encryption process happens when the filesystem writes a block of data on the disk. Its advantages are simplicity and transparency. However, the method lacks granularity, i.e., treating each file differently. This is the type of encryption used in Android 4.x and 5.x.
+eCryptfs is a stacked filesystem which transparently encrypts and decrypts each file using a randomly generated File Encryption Key (FEK). Each FEK is in turn encrypted with a File Encryption Key Encryption Key (FEKEK) either in kernel space or in user space with a daemon called 'ecryptfsd'.
+A more in detail comparison of block-based encryption and file-based encryption is presented in the following table.\footnote{\url{http://ksouedu.com/doc/ecryptfs-utils/ecryptfs-faq.html\#compare}}
+
+\todo{Move table to other chapter}
+
+\renewcommand{\arraystretch}{1.8}
+\begin{table}[tp]
+	\begin{tabularx}{\textwidth}{|| m{0.46\textwidth} || m{0.46\textwidth} ||}
+		\hhline{|t:=:t:=:t|}
+		\multicolumn{1}{||c||}{\textbf{Block Device Encryption}} & 
+			\multicolumn{1}{c||}{\textbf{Stacked Filesystem Encryption}} \\ 
+		\hhline{|:=::=:|}
+		Simple in concept and implementation; just transform blocks as they pass through. & High level of design complexity; meticulous handling of internal filesystem primitives required. \\
+		\hhline{|:=::=:|}
+		Must allocate a block device to dedicate for the entire filesystem. & Stacks on top of existing mounted filesystems; requires no special on-disk storage allocation effort. \\
+		\hhline{|:=::=:|}
+		Everything in the filesystem incurs the cost of encryption and decryption, regardless of the confidentiality requirements for the data. & Selective encryption of the contents of only the sensitive files. \\
+		\hhline{|:=::=:|}
+		Fully protects the confidentiality of the directory structures, superblocks, file sizes, file permissions, and so forth. & Cannot keep all filesystem metadata confidential. Since stacked filesystems encrypt on a per-file basis, attackers will know the approximate file sizes, for instance. \\
+		\hhline{|:=::=:|}
+		Coarse granularity; only fixed per-mountpoint encryption policies are possible. & Fine granularity; flexible per-file encryption policies are possible. \\
+		\hhline{|:=::=:|}		
+		No notion of ``encrypted files.'' Individual files must be re-encrypted via a userspace application before written to backups, sent via email, etc. & Individual encrypted files can be accessed transparently by applications; no additional work needed on the part of applications before moving the files to another location. \\
+		\hhline{|:=::=:|}
+		Clients cannot use directly on networked filesystems; encryption must be set up and managed on the server, or the client must encase all of his files in a loopback mount, losing the per-file granularity from the perspective of other clients. & Clients can stack on locally mounted networked filesystems; individual files are sent to the server and stored in encrypted form. \\
+		\hhline{|:=::=:|}
+		Can protect databases that use their own dedicated block device. & Can only protect databases that write their tables to regular files in an existing filesystem. \\
+		\hhline{|:=::=:|}
+		Used to protect swap space. & Not designed to protect swap space; we recommend using block device encryption to protect swap space while using eCryptfs on the filesystem. \\
+		\hhline{|:=::=:|}
+		Possible to hide the fact that the partition is encrypted. & The fact that encrypted data exists on the device is obvious to an observer. \\
+		\hhline{|:=::=:|}
+		Filesystem-agnostic; any filesystem will work on an encrypted block device. & Can only be expected to work with existing filesystems that are upstream in the official Linux kernel. \\
+		\hhline{|b:=:b:=:b|}
+	\end{tabularx}
+	\caption{Block Device Encryption vs Stacked Filesystem Encryption}
+\end{table}
+
+An added benefit of eCryptfs is the stacked filesystem approach. This means that the underlying filesystem can be used for the basic file and directory operations, while eCryptfs only needs to handle the encryption side.
+This filesystem will be discussed further in a subsequent chapter.
+
+\section{Related Work}
+\label{sec:related-work}
+
+There are other projects which tackle the issue of user data encryption. These will be presented in the following paragraphs.
+
+\subsection{Android Privacy through Encryption}
+\label{sub-sec:and-priv-defreez}
+
+One example is described by Daniel Defreez in his thesis titled "Android Privacy through Encryption".\footnote{\url{http://defreez.com/articles/thesis.pdf}}
+It uses the eCryptfs filesystem in order to create a secure storage and mount it in a location in the unencrypted filesystem. Where the approach differs from the one described in this thesis is that the entire data partition is encrypted and the decryption is done at boot. It is worth noting that at the time Defreez proposed this solution, multi-user was not yet supported to such an extent in Android systems.
+
+In addition to the keying method used by eCryptfs, another level of security, which has been named \textit{boundary mode}, has been added. The reasoning behind this was to increase resilience against memory-based attacks. Normally, the FEKEK key must remain memory resident in order for the device to be able to access the filesystem. Boundary mode introduces a third level of keys, called \textit{boundary keys}, which are used to differentiate between the files that must be accessible for the system to remain functional and those that can remain encrypted. Therefore, the master key can be removed from memory when the device is locked, while maintaining relevant boundary keys in order to access certain files.
+
+Since the eCryptfs kernel module does not have any supporting user space library in Android, an external library containg minimal functionality has been created. The handling of data encrypted with eCryptfs is handled through Vold, i.e., the volume daemon which is responsible for most storage related tasks in Android. Vold is used to call the native library which generates the key from the user's passphrase and add it to the kernel keyring at boot.
