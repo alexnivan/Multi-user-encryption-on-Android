@@ -1,84 +1,49 @@
 \chapter{Data Encryption in Linux Systems}
 \label{chapter:intro}
 
-\textbf{This is just a demo file. It should not be used as a sample for a thesis.}\\
-\todo{Remove this line (this is a TODO)}
+\section{eCryptfs}
+\label{sec:de-ecryptfs}
 
-\section{Project Description}
-\label{sec:proj}
+As mentioned before, eCryptfs is a stacked file system which manages data encryption. Now, details about it and the advantages and disadvantages is brings will be presented.
 
-\subsection{Project Scope}
-\label{sub-sec:proj-scope}
+Originally authored by Michael Halcrow and the IBM LInux Technology Center, eCryptfs is derived from Erez Zadok's Cryptfs, and the FiST framework for stacked filesystems. eCryptfs extended Cryptfs to provide advanced key management and policy features. 
 
-This thesis presents the \textbf{\project}.
+\subsection{Block Encryption Vs. Stacked File System Encryption}
+\label{sub-sec:be-vs-sfse}
 
-This is an example of a footnote \footnote{\url{www.google.com}}. You can see here a reference to \labelindexref{Section}{sub-sec:proj-objectives}.
+The two approaches to disk encryption are block-based and file-based. Block encryption means that the actual encryption process happens when the filesystem writes a block of data on the disk. Its advantages are simplicity and transparency. However, the method lacks granularity, i.e., treating each file differently. This is the type of encryption used in Android 3.0 and later.
 
-Here we have defined the CS abbreviation.\abbrev{CS}{Computer Science} and the UPB abbreviation.\abbrev{UPB}{University Politehnica of Bucharest}
+A more in detail comparison of block-based encryption and file-based encryption is presented in the following table.\footnote{\url{http://ksouedu.com/doc/ecryptfs-utils/ecryptfs-faq.html\#compare}}
 
-The main scope of this project is to qualify xLuna for use in critical systems.
-
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean aliquam lectus vel orci malesuada accumsan. Sed lacinia egestas tortor, eget tristiqu dolor congue sit amet. Curabitur ut nisl a nisi consequat mollis sit amet quis nisl. Vestibulum hendrerit velit at odio sodales pretium. Nam quis tortor sed ante varius sodales. Etiam lacus arcu, placerat sed laoreet a, facilisis sed nunc. Nam gravida fringilla ligula, eu congue lorem feugiat eu.
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean aliquam lectus vel orci malesuada accumsan. Sed lacinia egestas tortor, eget tristiqu dolor congue sit amet. Curabitur ut nisl a nisi consequat mollis sit amet quis nisl. Vestibulum hendrerit velit at odio sodales pretium. Nam quis tortor sed ante varius sodales. Etiam lacus arcu, placerat sed laoreet a, facilisis sed nunc. Nam gravida fringilla ligula, eu congue lorem feugiat eu.
-
-
-\subsection{Project Objectives}
-\label{sub-sec:proj-objectives}
-
-We have now included \labelindexref{Figure}{img:report-framework}.
-
-\fig[scale=0.5]{src/img/reporting-framework.pdf}{img:report-framework}{Reporting Framework}
-
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean aliquam lectus vel orci malesuada accumsan. Sed lacinia egestas tortor, eget tristiqu dolor congue sit amet. Curabitur ut nisl a nisi consequat mollis sit amet quis nisl. Vestibulum hendrerit velit at odio sodales pretium. Nam quis tortor sed ante varius sodales. Etiam lacus arcu, placerat sed laoreet a, facilisis sed nunc. Nam gravida fringilla ligula, eu congue lorem feugiat eu.
-
-We can also have citations like \cite{iso-odf}.
-
-\subsection{Related Work}
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean aliquam lectus vel orci malesuada accumsan. Sed lacinia egestas tortor, eget tristiqu dolor congue sit amet. Curabitur ut nisl a nisi consequat mollis sit amet quis nisl. Vestibulum hendrerit velit at odio sodales pretium. Nam quis tortor sed ante varius sodales. Etiam lacus arcu, placerat sed laoreet a, facilisis sed nunc. Nam gravida fringilla ligula, eu congue lorem feugiat eu.
-
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean aliquam lectus vel orci malesuada accumsan. Sed lacinia egestas tortor, eget tristiqu dolor congue sit amet. Curabitur ut nisl a nisi consequat mollis sit amet quis nisl. Vestibulum hendrerit velit at odio sodales pretium. Nam quis tortor sed ante varius sodales. Etiam lacus arcu, placerat sed laoreet a, facilisis sed nunc. Nam gravida fringilla ligula, eu congue lorem feugiat eu.
-
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean aliquam lectus vel orci malesuada accumsan. Sed lacinia egestas tortor, eget tristiqu dolor congue sit amet. Curabitur ut nisl a nisi consequat mollis sit amet quis nisl. Vestibulum hendrerit velit at odio sodales pretium. Nam quis tortor sed ante varius sodales. Etiam lacus arcu, placerat sed laoreet a, facilisis sed nunc. Nam gravida fringilla ligula, eu congue lorem feugiat eu.
-
-We are now discussing the \textbf{Ultimate answer to all knowledge}.
-This line is particularly important it also adds an index entry for \textit{Ultimate answer to all knowledge}.\index{Ultimate answer to all knowledge}
-
-\subsection{Demo listings}
-
-We can also include listings like the following:
-
-% Inline Listing example
-\lstset{language=make,caption=Application Makefile,label=lst:app-make}
-\begin{lstlisting}
-CSRCS = app.c
-SRC_DIR =..
-include $(SRC_DIR)/config/application.cfg
-\end{lstlisting}
-
-Listings can also be referenced. References don't have to include chapter/table/figure numbers... so we can have hyperlinks \labelref{like this}{lst:makefile-test}.
-
-%\subsection{Tables}
-
-We can also have tables... like \labelindexref{Table}{table:reports}.
-
-\begin{center}
-\begin{table}[htb]
-  \caption{Generated reports - associated Makefile targets and scripts}
-  \begin{tabular}{l*{6}{c}r}
-    Generated report & Makefile target & Script \\
-    \hline
-    Full Test Specification & full_spec & generate_all_spec.py  \\
-    Test Report & test_report & generate_report.py  \\
-    Requirements Coverage & requirements_coverage &
-    generate_requirements_coverage.py   \\
-    API Coverage & api_coverage & generate_api_coverage.py  \\
-  \end{tabular}
-  \label{table:reports}
+\renewcommand{\arraystretch}{1.8}
+\begin{table}[tp]
+	\begin{tabularx}{\textwidth}{|| m{0.46\textwidth} || m{0.46\textwidth} ||}
+		\hhline{|t:=:t:=:t|}
+		\multicolumn{1}{||c||}{\textbf{Block Device Encryption}} & 
+			\multicolumn{1}{c||}{\textbf{Stacked Filesystem Encryption}} \\ 
+		\hhline{|:=::=:|}
+		Simple in concept and implementation; just transform blocks as they pass through. & High level of design complexity; meticulous handling of internal filesystem primitives required. \\
+		\hhline{|:=::=:|}
+		Must allocate a block device to dedicate for the entire filesystem. & Stacks on top of existing mounted filesystems; requires no special on-disk storage allocation effort. \\
+		\hhline{|:=::=:|}
+		Everything in the filesystem incurs the cost of encryption and decryption, regardless of the confidentiality requirements for the data. & Selective encryption of the contents of only the sensitive files. \\
+		\hhline{|:=::=:|}
+		Fully protects the confidentiality of the directory structures, superblocks, file sizes, file permissions, and so forth. & Cannot keep all filesystem metadata confidential. Since stacked filesystems encrypt on a per-file basis, attackers will know the approximate file sizes, for instance. \\
+		\hhline{|:=::=:|}
+		Coarse granularity; only fixed per-mountpoint encryption policies are possible. & Fine granularity; flexible per-file encryption policies are possible. \\
+		\hhline{|:=::=:|}		
+		No notion of ``encrypted files.'' Individual files must be re-encrypted via a userspace application before written to backups, sent via email, etc. & Individual encrypted files can be accessed transparently by applications; no additional work needed on the part of applications before moving the files to another location. \\
+		\hhline{|:=::=:|}
+		Clients cannot use directly on networked filesystems; encryption must be set up and managed on the server, or the client must encase all of his files in a loopback mount, losing the per-file granularity from the perspective of other clients. & Clients can stack on locally mounted networked filesystems; individual files are sent to the server and stored in encrypted form. \\
+		\hhline{|:=::=:|}
+		Can protect databases that use their own dedicated block device. & Can only protect databases that write their tables to regular files in an existing filesystem. \\
+		\hhline{|:=::=:|}
+		Used to protect swap space. & Not designed to protect swap space; we recommend using block device encryption to protect swap space while using eCryptfs on the filesystem. \\
+		\hhline{|:=::=:|}
+		Possible to hide the fact that the partition is encrypted. & The fact that encrypted data exists on the device is obvious to an observer. \\
+		\hhline{|:=::=:|}
+		Filesystem-agnostic; any filesystem will work on an encrypted block device. & Can only be expected to work with existing filesystems that are upstream in the official Linux kernel. \\
+		\hhline{|b:=:b:=:b|}
+	\end{tabularx}
+	\caption{Block Device Encryption vs Stacked Filesystem Encryption}
 \end{table}
-\end{center}

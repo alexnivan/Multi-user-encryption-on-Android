@@ -1,14 +1,16 @@
 \chapter{State of the Art}
 \label{chapter:state}
 
-\section{Android Filesystem}
+\section{Android File Systems}
 \label{sec:android-filesys}
+
+Following is a brief presentation of the different file systems used in Android and in this project.
 
 \subsection{YAFFS}
 \label{sub-sec:yaffs}
 
 Until the end of 2010, most Android devices used the YAFFS filesystem.\footnote{\url{http://arstechnica.com/information-technology/2010/12/ext4-filesystem-hits-android-no-need-to-fear-data-loss/}}
-YAFFS stands for Yet Another Flash File System. It was designed and used for NAND flash storage. The primary concern was even distribution in the number of overwrites. This was due to two factors. First, a NAND page has a limited lifetime. Second, overwriting a NAND page means erasing it and then writing the new data, which incurs a heavy performance drop.
+\abbrev{YAFFS}{Yet Another Flash File System}YAFFS stands for Yet Another Flash File System. It was designed and used for NAND flash storage. The primary concern was even distribution in the number of overwrites. This was due to two factors. First, a NAND page has a limited lifetime. Second, overwriting a NAND page means erasing it and then writing the new data, which incurs a heavy performance drop.
 
 \subsection{ext4}
 \label{sub-sec:ext4}
@@ -16,53 +18,47 @@ YAFFS stands for Yet Another Flash File System. It was designed and used for NAN
 Since 2010, Android devices have switched from YAFFS storage to ext4, which is tipically used in the Linux kernel. The reason was mainly related to performance, as YAFFS did not support multi-threaded operations, while devices started to contain multi-core processors.
 The downside of using ext4 stood in its buffering mechanism. In the event of a system failure, there was the possibility of data loss.
 
-The migration did not affect the higher levels of the software stack due to the abstraction layer provided provided by the Linux kernel, called the virtual file system (or VFS). The VFS interface presented to the system is the same, regardless of the underlying file system used.
+The migration did not affect the higher levels of the software stack due to the abstraction layer provided provided by the Linux kernel, called the virtual file system (or VFS). The VFS\abbrev{VFS}{Virtual File System} interface presented to the system is the same, regardless of the underlying file system used.
 
 \subsection{eCryptfs}
-\label{sub-sec:ecryptfs}
+\label{sub-sec:sa-ecryptfs}
 
-The two approaches to disk encryption are block-based and file-based. Block encryption means that the actual encryption process happens when the filesystem writes a block of data on the disk. Its advantages are simplicity and transparency. However, the method lacks granularity, i.e., treating each file differently. This is the type of encryption used in Android 4.x and 5.x.
-eCryptfs is a stacked filesystem which transparently encrypts and decrypts each file using a randomly generated File Encryption Key (FEK). Each FEK is in turn encrypted with a File Encryption Key Encryption Key (FEKEK) either in kernel space or in user space with a daemon called 'ecryptfsd'.
-A more in detail comparison of block-based encryption and file-based encryption is presented in the following table.\footnote{\url{http://ksouedu.com/doc/ecryptfs-utils/ecryptfs-faq.html\#compare}}
+eCryptfs is a stacked file system which transparently encrypts and decrypts each file using a randomly generated File Encryption Key (FEK\abbrev{FEK}{File Encryption Key}). Each FEK is in turn encrypted with a File Encryption Key Encryption Key (FEKEK\abbrev{FEKEK}{File Encryption Key Encryption Key}) either in kernel space or in user space with a daemon called 'ecryptfsd'.
 
-\todo{Move table to other chapter}
+An added benefit of the stacked file system approach is that the underlying file system can be used for the basic file and directory operations, while eCryptfs only needs to handle the encryption side.
 
-\renewcommand{\arraystretch}{1.8}
-\begin{table}[tp]
-	\begin{tabularx}{\textwidth}{|| m{0.46\textwidth} || m{0.46\textwidth} ||}
-		\hhline{|t:=:t:=:t|}
-		\multicolumn{1}{||c||}{\textbf{Block Device Encryption}} & 
-			\multicolumn{1}{c||}{\textbf{Stacked Filesystem Encryption}} \\ 
-		\hhline{|:=::=:|}
-		Simple in concept and implementation; just transform blocks as they pass through. & High level of design complexity; meticulous handling of internal filesystem primitives required. \\
-		\hhline{|:=::=:|}
-		Must allocate a block device to dedicate for the entire filesystem. & Stacks on top of existing mounted filesystems; requires no special on-disk storage allocation effort. \\
-		\hhline{|:=::=:|}
-		Everything in the filesystem incurs the cost of encryption and decryption, regardless of the confidentiality requirements for the data. & Selective encryption of the contents of only the sensitive files. \\
-		\hhline{|:=::=:|}
-		Fully protects the confidentiality of the directory structures, superblocks, file sizes, file permissions, and so forth. & Cannot keep all filesystem metadata confidential. Since stacked filesystems encrypt on a per-file basis, attackers will know the approximate file sizes, for instance. \\
-		\hhline{|:=::=:|}
-		Coarse granularity; only fixed per-mountpoint encryption policies are possible. & Fine granularity; flexible per-file encryption policies are possible. \\
-		\hhline{|:=::=:|}		
-		No notion of ``encrypted files.'' Individual files must be re-encrypted via a userspace application before written to backups, sent via email, etc. & Individual encrypted files can be accessed transparently by applications; no additional work needed on the part of applications before moving the files to another location. \\
-		\hhline{|:=::=:|}
-		Clients cannot use directly on networked filesystems; encryption must be set up and managed on the server, or the client must encase all of his files in a loopback mount, losing the per-file granularity from the perspective of other clients. & Clients can stack on locally mounted networked filesystems; individual files are sent to the server and stored in encrypted form. \\
-		\hhline{|:=::=:|}
-		Can protect databases that use their own dedicated block device. & Can only protect databases that write their tables to regular files in an existing filesystem. \\
-		\hhline{|:=::=:|}
-		Used to protect swap space. & Not designed to protect swap space; we recommend using block device encryption to protect swap space while using eCryptfs on the filesystem. \\
-		\hhline{|:=::=:|}
-		Possible to hide the fact that the partition is encrypted. & The fact that encrypted data exists on the device is obvious to an observer. \\
-		\hhline{|:=::=:|}
-		Filesystem-agnostic; any filesystem will work on an encrypted block device. & Can only be expected to work with existing filesystems that are upstream in the official Linux kernel. \\
-		\hhline{|b:=:b:=:b|}
-	\end{tabularx}
-	\caption{Block Device Encryption vs Stacked Filesystem Encryption}
-\end{table}
+This file system will be discussed further in a subsequent chapter.
 
-An added benefit of eCryptfs is the stacked filesystem approach. This means that the underlying filesystem can be used for the basic file and directory operations, while eCryptfs only needs to handle the encryption side.
-This filesystem will be discussed further in a subsequent chapter.
+\section{Android Device Encryption}
+\label{sec:and-dev-enc}
 
+Encryption is the process of encoding user data on an Android device using an encrypted key. Once a device is encrypted, all user-created data is automatically encrypted before committing it to disk and all reads automatically decrypt data before returning it to the calling process.
+Android devices currently use dm-crypt to implement encryption.
+
+\subsection{dm-crpyt}
+\label{sub-sec:dm-crypt}
+
+%http://www.saout.de/misc/dm-crypt/
+dm-crypt is a transparent disk encryption subsystem in Linux kernel versions 2.6 and later. It is part of the device mapper infrastructure, and uses cryptographic routines from the kernel's Crypto API.
+
+Device-mapper is a infrastructure introduced in the Linux 2.6 kernel that provides a generic way to create virtual layers of block devices that can do different things on top of real block devices.
+dm-crypt is implemented as a device mapper target and may be stacked on top of other device mapper transformations. It can thus encrypt whole disks (including removable media), partitions, software RAID volumes, logical volumes, as well as files. It appears as a block device, which can be used to back file systems, swap or as an LVM\abbrev{LVM}{Logical Volume Manager} physical volume.
+
+\subsection{How Android Encryption Works}
+\label{sub-sec:and-enc-works}
+
+%https://source.android.com/devices/tech/security/encryption/
+Because Android uses dm-crypt, encryption works with Embedded MultiMediaCard (eMMC) and similar flash devices that present themselves to the kernel as block devices. Encryption is not possible with YAFFS, which talks directly to a raw NAND flash chip.
+
+The encryption algorithm is 128 Advanced Encryption Standard (AES\abbrev{AES}{Advanced Encryption Standard}) with cipher-block chaining (CBC\abbrev{CBC}{Cipher-Block Chaining}) and ESSIV:SHA256.\abbrev{ESSIV}{Encrypted salt-sector initialization vector}\abbrev{SHA}{Secure Hash Algorithm} The master key is encrypted with 128-bit AES via calls to the OpenSSL library. 128 bits or more must be used for the key.
+
+In Android 5.0, hardware-backed storage of the encryption key using Trusted Execution Environment’s (TEE) signing capability (such as in a TrustZone) has been added.
+
+The two main components responsible for managing the encryption process are init and vold, i.e., the volume daemon which is responsible for most storage related tasks in Android. init calls vold, and vold sets properties to trigger events in init.
+
+In order to encrypt, decrypt or wipe /data, /data must not be mounted. However, in order to prompt for passwords, show progress, or suggest a data wipe, the framework must start and the framework requires /data to run. To bipass this issue, a temporary filesystem is mounted on /data. It does impose the limitation that in order to switch from the temporary filesystem to the true /data filesystem, the system must stop every process with open files on the temporary filesystem and restart those processes on the real /data filesystem. 
+
+\newpage
 \section{Related Work}
 \label{sec:related-work}
 
@@ -72,8 +68,18 @@ There are other projects which tackle the issue of user data encryption. These w
 \label{sub-sec:and-priv-defreez}
 
 One example is described by Daniel Defreez in his thesis titled "Android Privacy through Encryption".\footnote{\url{http://defreez.com/articles/thesis.pdf}}
-It uses the eCryptfs filesystem in order to create a secure storage and mount it in a location in the unencrypted filesystem. Where the approach differs from the one described in this thesis is that the entire data partition is encrypted and the decryption is done at boot. It is worth noting that at the time Defreez proposed this solution, multi-user was not yet supported to such an extent in Android systems.
+It uses the eCryptfs file system in order to create a secure storage and mount it in a location in the unencrypted file system. Where the approach differs from the one described in this thesis is that the entire data partition is encrypted and the decryption is done at boot. It is worth noting that at the time Defreez proposed this solution, multi-user was not yet supported to such an extent in Android systems.
 
-In addition to the keying method used by eCryptfs, another level of security, which has been named \textit{boundary mode}, has been added. The reasoning behind this was to increase resilience against memory-based attacks. Normally, the FEKEK key must remain memory resident in order for the device to be able to access the filesystem. Boundary mode introduces a third level of keys, called \textit{boundary keys}, which are used to differentiate between the files that must be accessible for the system to remain functional and those that can remain encrypted. Therefore, the master key can be removed from memory when the device is locked, while maintaining relevant boundary keys in order to access certain files.
+In addition to the keying method used by eCryptfs, another level of security, which has been named \textit{boundary mode}, has been added. The reasoning behind this was to increase resilience against memory-based attacks. Normally, the FEKEK key must remain memory resident in order for the device to be able to access the file system. Boundary mode introduces a third level of keys, called \textit{boundary keys}, which are used to differentiate between the files that must be accessible for the system to remain functional and those that can remain encrypted. Therefore, the master key can be removed from memory when the device is locked, while maintaining relevant boundary keys in order to access certain files.
 
-Since the eCryptfs kernel module does not have any supporting user space library in Android, an external library containg minimal functionality has been created. The handling of data encrypted with eCryptfs is handled through Vold, i.e., the volume daemon which is responsible for most storage related tasks in Android. Vold is used to call the native library which generates the key from the user's passphrase and add it to the kernel keyring at boot.
+Since the eCryptfs kernel module does not have any supporting user space library in Android, an external library containg minimal functionality has been created. The handling of data encrypted with eCryptfs is handled through Vold. Vold is used to call the native library which generates the key from the user's passphrase and add it to the kernel keyring at boot.
+
+\subsection{EncFS for Android}
+\label{sub-sec:encfs}
+
+Another example\footnote{\url{http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=6341374}} uses EncFS, a FUSE-based file-system offering file-system encryption on traditional desktop operating systems. EncFS uses the FUSE library and FUSE kernel module to provide the file- system interface and runs without any special permissions. Similar to eCryptfs, EncFS runs over an existing base file-system, and is responsible only for encryption.
+
+Three major components are required to make EncFS work on any platform: kernel FUSE library support, user space libfuse, and EncFS binaries. To make an encryption file-system work on Android, a modified bootstrapping process and password login was integrated into the operating system framework.
+
+Normally, the Android framework loads the user interface by unpacking the applications and other files from /system and /data partitions. In this implementation, the /data partition contains only a skeleton of the required folders which won’t be used by the users for actual data. The authors stored the encrypted data in a separate directory and would mount it over /data partition when the user supplies the password.
+They also modified the Launcher application in Android framework to accept this password, which is the key for the encrypted version of the /data partition. If the password provided by the user is valid, EncFS mounts the encrypted data partition on /data mountpoint using FUSE. If the mount is performed successfully, the Launcher will call a dedicated native program to soft reboot Android Dalvik environment in order to load the actual /data partition.
