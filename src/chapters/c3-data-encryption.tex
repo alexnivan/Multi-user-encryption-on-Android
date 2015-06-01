@@ -17,13 +17,13 @@ Each encryption and decryption function requires a cryptographic key. A cryptogr
 \centering
 \begin{minipage}{0.45\textwidth}
 \centering
-  \includegraphics[width=.9\linewidth]{src/img/encrypt/plain2cypher.jpg}
+  \includegraphics[width=.9\linewidth]{src/img/encrypt/plain2cipher.jpg}
   \caption{Encryption}
   \label{fig:encrypt-fig}
 \end{minipage}\hfill
 \begin{minipage}{0.45\textwidth}
 \centering
-  \includegraphics[width=.9\linewidth]{src/img/encrypt/cypher2plain.jpg}
+  \includegraphics[width=.9\linewidth]{src/img/encrypt/cipher2plain.jpg}
   \caption{Decrpytion}
   \label{fig:decrypt-fig}
 \end{minipage}
@@ -156,4 +156,60 @@ A more in detail comparison of block-based encryption and file-based encryption 
 
 As mentioned before, eCryptfs is a stacked file system which manages data encryption. Now, details about it and the advantages and disadvantages is brings will be presented.
 
-Originally authored by Michael Halcrow and the IBM LInux Technology Center, eCryptfs is derived from Erez Zadok's Cryptfs, and the FiST framework for stacked filesystems. eCryptfs extended Cryptfs to provide advanced key management and policy features. 
+Originally authored by Michael Halcrow and the IBM Linux Technology Center, eCryptfs is derived from Erez Zadok's Cryptfs, and the FiST framework for stacked filesystems. eCryptfs extended Cryptfs to provide advanced key management and policy features.\footnote{\url{http://uni-smr.ac.ru/archive/linux/linuxsymposium_procv1.pdf\#page=209}}
+
+It has already been mentioned that eCryptfs uses a randomly generated File Encyption Key(FEK) for each file and that this key is also encrypted. Also noteworthy is that the FEK in its encrypted form is actually stored together with the encrypted file. This adds the posibility of transfering a file while encrypted with the ability to gain access with the proper credentials.
+
+\subsection{Architecture}
+\label{sub-sec:arch-ecryptfs}
+
+eCryptfs is implemented as a kernel module augmented with various userspace utilities for performing key management functions.
+
+\fig[scale=0.24]{src/img/ecryptfs/arch.png}{img:ecryptfs-arch}{eCryptfs Architecture}
+
+The kernel module encrypts the file contents using the kernel cryptographic API. A keystore component extracts the header information from individual files and forwards this data to a callout application. The callout application evaluates the header information against the target policy and performs various operations, such as prompting the user for a passphrase or decrypting a session key with a private key.
+
+Key management is done in userspace for two main reasons. The first is to reduce the complexity of the code running in kernelspace. The second is due to the fact that management operation are only required when opening/closing a file. Since these operations are relatively infrequent, the overhead does not constitute an issue.
+
+Below is the flow of an open operation on a system using ecryptfs.
+
+\begin{figure}[h!]
+\centering
+    \includegraphics[width=0.9\textwidth]{src/img/ecryptfs/newfile.png}
+\caption{eCryptfs Open File Process}
+\end{figure}
+
+\subsection{Cryptographic Operations}
+\label{sub-sec:crypt-ops-ecryptfs}
+
+Most of the data encryption is done in the kernel module, and hence eCryptfs makes use of the kernel cryptographic API to perform the encryption and the decryption operations. One of the primary motivators in implementing eCryptfs in the kernel is to avoid the overhead of context switches between userspace and kernel space, which is frequent when dealing with pages in file I/O. Any symmetric ciphers supported by the Linux kernel can be used as the bulk data ciphers for the eCryptfs files.
+
+The underlying file format for eCryptfs is based on the OpenPGP format described in RFC2440\footnote{\url{ftp://ftp.rfc-editor.org/in-notes/rfc2440.txt}}
+
+\begin{figure}[h!]
+\centering
+    \includegraphics[width=0.92\textwidth]{src/img/ecryptfs/fileformat.png}
+\caption{eCryptfs File Format}
+\end{figure}
+
+An aspect where eCryptfs deviates from the standard is the introduction of \textit{data extents}. This is done in order to accommodate random access while maintaining performance. The OpenPGP standard assumes that the encryption and decryption is done as an atomic operation over the entire data contents of the file; there is no concept of a partially encrypted or decrypted file. The data is encrypted using what is known as a chained block cipher(CBC\abbrev{CBC}{Chained Block Cipher}). This means that each block of plaintext, with the exception of the first, is combined with the previous block ciphertext through a XOR operation before being encrpyted. Evidently, the same process must be followed when decrypting. Thus, reading a byte from a file requires decrypting all leading bytes. Conversely, writing a byte incurs encrypting all trailing bytes from that file. For large files, reading a byte towards the end of the file or writing a byte at the beginning of it would be inefficient.
+
+Using extents, each part of a file is encrypted separately; reading or writing a byte requires operations only on the extent containing the respective byte. The extents span the page size (as specified for each kernel build). An extent containing initialization vectors(IV\abbrev{IV}{Initialization Vector}) precedes a group of extents which used the respective IV's (each extent has an unique IV). These initialization vectors are used to XOR the first block of data when encrypting/decrypting.
+
+Another challenge is treating \textit{sparse files}. According to UNIX semantics, a file becomes sparse when an application seeks past the end of it. These results in regions where no data is written, also known as \textit{holes}. The file system normally uses special markers for these regions and sets the filesize in accordance. Thus, less space on the disk is used to store the file. When reading from these regions, the file system simply fills in with zero's.
+
+Although eCryptfs could use markers, e.g. IV's consisting of all zero's, to implement a similar behaviour, this may constitute a breach in security, since it becomes readily apparent to a potential attacker which regions are sparse.
+Therefore, eCryptfs prefers to relegate how to treat sparse files to something policy decides.
+
+\subsection{Key Management}
+\label{sub-sec:keys-ecryptfs}
+
+eCryptfs aims to operate transparently. The fact that files are encrypted should not be a concern to the user.
+
+Every file receives a randomly generated session key, which is used in the bulk data encryption of the file contents. This session key is stored in the cryptographic metadata for the file, which is in turn cached in the user’s session keyring. When an application closes a newly created file, eCryptfs encrypts the session key once for each authentication token associated with that file, as dictated by policy, then writes these encrypted session keys into packets in the header of the underlying file.
+When an application later opens the file, eCryptfs reads in the encrypted session keys and chains them off of the cryptographic metadata for the file. eCryptfs looks through the user’s authentication tokens to attempt to find a match with the encrypted session keys; it uses the first one found to decrypt the session key. In the event that no authentication tokens in the user’s session keyring can decrypt any of the encrypted session key packets, eCryptfs falls back on policy. This policy can dictate actions such as querying PKI modules for the existence of private keys or prompting the user for a passphrase.
+
+Passphrase authentication tokens in eCryptfs exist in three forms: non-passphrased, saltless, and salted. In order to address the threat of passphrase dictionary attacks, eCryptfs utilizes the method whereby a salt value is concatenated with a passphrase to generate a passphrase identifier. The concatenated value is iteratively hashed (65,537 times by default) to generate the identifying signature for the salted authentication token.
+
+The key callout application is the primary contact between the eCryptfs kernel module and the userspace key management code. This callout application parses policy information from the target, which it interprets in relation to the header information in each file. It may then make calls through the PKI API in order to satisfy pending public key requests, or it may go searching for a salted passphrase with a particular signature. The eCryptfs daemon listens to a socket (for which the location is written to the user’s session keyring). Whenever policy calls for the user to be prompted for a passphrase, the callout application can retrieve the socket’s location and use it to request the daemon to prompt the user; the daemon then returns the user’s passphrase to the callout application.
+
