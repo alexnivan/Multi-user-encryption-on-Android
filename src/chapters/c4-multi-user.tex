@@ -1,2 +1,112 @@
 \chapter{Multi-User Encryption}
 \label{chapter:multi-user}
+
+In the following sections the architecture and implementation of the proposed solution will be discussed, as well as some of the difficulties encountered and the corresponding solutions.
+
+\section{Overview}
+\label{sec:over-multi-user}
+
+The purpose of this project is to enable separate encryption of various users' data under a multi-user Android environment. This means introducing the following functionalities:
+\begin{itemize}
+\item Choose whether a user is encrypted at creation
+\item Unlock and mount encrypted data on password entry
+\item Unmount and lock encrypted data on user switch
+\item Unmount and lock encrypted data on device sleep
+\end{itemize}
+
+This involves creating a framework to manage the encrypted locations (or \textit{storages}) as well as patching various Android subsystems in order to accommodate the aforementioned functionalities.
+
+\section{Architecture}
+\label{sec:arch-multi-user}
+
+\begin{figure}[h]
+
+\centering
+\begin{tikzpicture}
+[node distance = 1cm, auto,font=\footnotesize,
+% STYLES
+every node/.style={node distance=2cm},
+comment/.style={rectangle, inner sep= 5pt, text width=3cm, node distance=1cm, align=right},
+dummy/.style={rectangle, inner sep= 5pt, text width=0cm, node distance=3cm},
+force/.style={rectangle, draw, fill=black!10, inner sep=5pt, text width=3cm, text badly centered, minimum height=1cm, font=\bfseries\footnotesize\sffamily}] 
+
+% Draw forces
+\node [force] (efstools) {EFS Tools};
+\node [force, above of=efstools] (efsserver) {EFS Server};
+\node [force, left=1cm of efstools] (openssl) {OpenSSL};
+\node [force, right=1cm of efstools] (keystore) {Keystore};
+\node [force, below of=efstools] (ecryptfs) {eCryptfs Module};
+\node [force, below of=openssl] (secchip) {Security Chip Driver};
+\node [force, above of=efsserver] (efsservice) {EFS Service};
+\node [force, above of=efsservice] (keyguard) {Keyguard};
+\node [force, left=1cm of efsservice] (usermanager) {UserManager Service};
+\node [force, right=1cm of efsservice] (powermanager) {PowerManager Service};
+\node [force, left=1cm of keyguard] (userswitcher) {User Switcher};
+\node [comment, right=1cm of efsserver] (middleware) {Middleware};
+\node [comment, right=1cm of ecryptfs] (kernel) {Kernel};
+\node [comment, right=1cm of keyguard] (framework) {Framework};
+\node [dummy, left of=openssl] (d00) {};
+\node [dummy, right of=keystore] (d01) {};
+\node [dummy, below=0.5cm of d00] (l00) {};
+\node [dummy, below=0.5cm of d01] (l01) {};
+\node [dummy, left of=usermanager] (d10) {};
+\node [dummy, right of=powermanager] (d11) {};
+\node [dummy, below=0.5cm of d10] (l10) {};
+\node [dummy, below=0.5cm of d11] (l11) {};
+
+\draw [dashed, thick]
+	(l00) -- (l01)
+	(l10) -- (l11);
+
+% Draw the links between forces
+\path[<->,very thick]
+(efstools) edge (efsserver)
+(efstools) edge (openssl)
+(efstools) edge (keystore)
+(efstools) edge (ecryptfs)
+(openssl) edge (secchip)
+(efsserver) edge (efsservice)
+(efsservice) edge (powermanager)
+(efsservice) edge (usermanager)
+(efsservice) edge (userswitcher)
+(efsservice) edge (keyguard);
+
+\end{tikzpicture} 
+\caption{Multi-User Encryption Architecture}
+\label{fig:arch-multi-user}
+\end{figure}
+
+The architecture can be broken down into three main pieces, each containing multiple subsystems.
+
+The first of these is the kernel layer. Here resides the eCryptfs module which has been presented in the previous chapter. Also in this layer is the security chip driver that comes into action on devices with security hardware capabilities (e.g. cryptographic acceleration).
+
+The second component is the one where the core of the system is implemented. Called the middleware layer, it hosts the EFS Tools C library, which communicates with the OpenSSL library and the Keystore, as well as the EFS Server. EFS Tools is the C library which makes use of the kernel module to implement the management of storages. The EFS Server is a native Android service which listens on a socket for requests from the upper layer and calls the relevant EFS Tools functions.
+
+Finally, the thrid component is situated in the Android framework. The most relevant part of it is the EFS Service, which is an Android Java Service that connects various Android subsystems to the native service and underlying C library.
+
+Furthermore, in the framework, several Android control systems and user interfaces have been modified in order to integrate the desired functionality.
+
+\section{C library}
+\label{sec:c-multi-user}
+
+\todo{stuff}
+
+\section{Native Service}
+\label{sec:native-service-multi-user}
+
+\todo{stuff}
+
+\section{Java Framework}
+\label{sec:java-frmwrk-multi-user}
+
+\todo{stuff}
+
+\section{User Interface}
+\label{sec:interface-multi-user}
+
+\todo{stuff}
+
+\section{Issues}
+\label{sec:issues-multi-user}
+
+\todo{stuff}

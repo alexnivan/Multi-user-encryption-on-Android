@@ -19,7 +19,7 @@ thesis.pdf:
 
 .PHONY: clean-tmp
 clean-tmp:
-	rm *.log *.lot *.lof *.blg *.bbl *.out *.toc *.aux || exit 0
+	rm *.log *.lol *.lot *.lof *.blg *.bbl *.out *.toc *.aux || exit 0
 	find . -name *.aux | xargs rm
 	rm thesis.idx thesis.ilg thesis.ind || exit 0
 	rm thesis.nlo thesis.nls || exit 0
