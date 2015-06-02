@@ -49,7 +49,7 @@ In some cases, e.g. when encrypting swap space or a /tmp partition, it is not ne
 
 \item \textbf{Stored in passphrase-protected form in a keyfile or on the disk itself}
 
-The master key (and thus the encrypted data) can be protected with a secret passphrase, which you will have to remember and enter each time you want to mount the encrypted block device or folder.
+The master key can be protected with a secret passphrase, which will need to be entered each time the encrypted block device or folder is mounted.
 It is usually not used for de/encrypting the disk data directly, though. For example, in the case of stacked filesystem encryption, each file can be automatically assigned its own encryption key. Whenever the file is to be read/modified, this file key first needs to be decrypted using the main key, before it can itself be used to de/encrypt the file contents.
 
 \end{enumerate}
@@ -213,3 +213,55 @@ Passphrase authentication tokens in eCryptfs exist in three forms: non-passphras
 
 The key callout application is the primary contact between the eCryptfs kernel module and the userspace key management code. This callout application parses policy information from the target, which it interprets in relation to the header information in each file. It may then make calls through the PKI API in order to satisfy pending public key requests, or it may go searching for a salted passphrase with a particular signature. The eCryptfs daemon listens to a socket (for which the location is written to the user’s session keyring). Whenever policy calls for the user to be prompted for a passphrase, the callout application can retrieve the socket’s location and use it to request the daemon to prompt the user; the daemon then returns the user’s passphrase to the callout application.
 
+\subsection{Encrypting a Directory Using eCryptfs}
+\label{sub-sec:encrypt-dir-ecryptfs}
+
+This is an example of how to encrypt a user directory. It relies on the \textit{ecryptfs-utils} package being installed. Although the operations can be performed manually, for the purpose of this example there is no need to go into such amount of detail. More details on the Arch Linux page on eCryptfs.\footnote{\url{https://wiki.archlinux.org/index.php/ECryptfs}}
+
+The name \texttt{secret} will be used for the created directory.
+
+Firt step is to create the required directories:
+\begin{lstlisting}[numbers=none]
+$ mkdir ~/.secret ~/secret ~/.ecryptfs
+$ touch ~/.ecryptfs/secret.conf ~/.ecryptfs/secret.sig
+\end{lstlisting}
+
+The encrypted data will be stored in the \texttt{\textasciitilde/.secret} directory.
+\texttt{\textasciitilde/secret} is the location where the \texttt{\textasciitilde/.secret} will be mounted as an eCryptfs file system.
+
+Next, the full paths must be added to \texttt{\textasciitilde/.ecryptfs/secret.conf}. They will be used later to mount/unmount data.
+\begin{lstlisting}[numbers=none]
+$ echo "/home/$USER/.secret /home/$USER/secret ecryptfs" > ~/.ecryptfs/secret.conf
+\end{lstlisting}
+Note that \texttt{\$USER} should be expanded by the shell to the current username.
+
+A mount passphrase must be added to the keyring:
+\begin{lstlisting}[numbers=none]
+$ ecryptfs-add-passphrase
+Passphrase: 
+Inserted auth tok with sig [78c6f0645fe62da0] into the user session keyring
+\end{lstlisting}
+
+The ouput signature is added to \texttt{\textasciitilde/.ecryptfs/secret.sig}
+\begin{lstlisting}[numbers=none]
+$ echo 78c6f0645fe62da0 > ~/.ecryptfs/secret.sig
+\end{lstlisting}
+
+Optionally, a passphrase for filename encryption can be appended to the same file
+\begin{lstlisting}[numbers=none]
+$ ecryptfs-add-passphrase
+Passphrase: 
+Inserted auth tok with sig [326a6d3e2a5d444a] into the user session keyring
+ $ echo 326a6d3e2a5d444a >> ~/.ecryptfs/secret.sig
+\end{lstlisting}
+
+To mount \texttt{\textasciitilde/.secret} on \texttt{\textasciitilde/secret}:
+\begin{lstlisting}[numbers=none]
+$ mount.ecryptfs_private secret
+\end{lstlisting}
+The mount options are automatically generated using the information stored in \texttt{secret.conf} and \texttt{secret.sig}.
+
+Similarly, to unmount:
+\begin{lstlisting}[numbers=none]
+$ umount.ecryptfs_private secret
+\end{lstlisting}
