@@ -219,7 +219,21 @@ restore
 \section{Native Service}
 \label{sec:native-service-multi-user}
 
-\todo{stuff}
+The native service is the communication medium between the C library presented in the previous section and the upper layers of the system. Its main function is to handle requests made by the Java EFS Service, situated in the Android Framework. However, other system entities can make requests.
+
+In order to make a native service in Android, one must add the relevant code in the init script.
+For the \texttt{efsserver} native service, the init entry is the following.
+
+\begin{lstlisting}[numbers=none, caption=efsserver init entry, label=lst:efsserver-init]
+service efs-server /system/bin/efs-server
+    class core
+    socket efs-server stream 0660 root system
+\end{lstlisting}
+
+The first line defines the service named efs-server and specifies the location of the executable.
+The second line specifies the service class. This is less relevant at the moment. Finally, the last line specifies that the service requires a socket and also the name, type, access rights, owner and group. At startup, init creates a socket with the desired options in \texttt{/dev/sockets/efs-server} and executes \texttt{/system/bin/efs-server}.
+
+What efs-server does, exactly, is to listen for commands sent to the above socket. It is written in C++ and uses a class derived from FramworkListener class present in Android. This is a specialized class which handles communication through the socket. It supports registering commands and for every request received, it iterates over the list of known commands. If the command is found, the appropriate function is called. Otherwise, an error code is returned to the requester. 
 
 \section{Java Framework}
 \label{sec:java-frmwrk-multi-user}
