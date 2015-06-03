@@ -258,4 +258,4 @@
 \usepackage{hhline}
 
 \usepackage{tikz} 
-\usetikzlibrary{arrows,decorations.pathmorphing,backgrounds,fit,positioning,shapes.symbols,chains}
+\usetikzlibrary{arrows,decorations.pathmorphing,backgrounds,fit,positioning,shapes,chains}

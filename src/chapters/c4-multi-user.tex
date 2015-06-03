@@ -9,8 +9,8 @@ In the following sections the architecture and implementation of the proposed so
 The purpose of this project is to enable separate encryption of various users' data under a multi-user Android environment. This means introducing the following functionalities:
 \begin{itemize}
 \item Choose whether a user is encrypted at creation
-\item Unlock and mount encrypted data on password entry
-\item Unmount and lock encrypted data on user switch
+\item Unlock and mount encrypted data on user password entry
+\item Unmount and lock encrypted data on switch user
 \item Unmount and lock encrypted data on device sleep
 \end{itemize}
 
@@ -89,7 +89,132 @@ Furthermore, in the framework, several Android control systems and user interfac
 \section{C library}
 \label{sec:c-multi-user}
 
-\todo{stuff}
+The C library is the core component of the design. It is responsible for exposing the operations supported by the eCryptfs kernel module to the upper layers of the system.
+
+The key notion it works with is that of \textit{secure storage} or \textit{secure container}. In this case, a secure storage is a directory in the device's file hierarchy where encrypted data is stored. It can only be mounted and accessed as a regular location with the proper credentials.
+
+There are three main responsibilities handled by the library:
+\begin{enumerate}
+\item Key management
+\item Container management
+\item Integrity
+\end{enumerate}
+
+As discussed before, the eCryptfs kernel module encrypts each file with a randomly generated key, then encrypts these key with a \textit{master key}. EFS Tools stores this master key, encrypted with a user password, in a location on the disk. Each container has an associated master key, stored separately. When a storage is deleted, so is the corresponding master key. In the event the user requests a password change, the master key is simply decrypted with the old password and encrypted with the new password, thus eliminating the need to encrypt all the data again.
+
+Container management represents the operations of creating and destroying a secure container, as well as unlocking and mounting, unmounting and locking a container. The C library ensures these operations remain transparent to the user.
+
+Here we have the function that unlocks a storage.
+
+\begin{lstlisting}[basicstyle=\small, language=C, caption=EFS unlock operation, label=lst:efs-unlock]
+int EFS_unlock(char *storage_path, char *passwd)
+{
+    char private_dir_path[MAX_PATH_LENGTH];
+    char key_storage_path[MAX_PATH_LENGTH];
+    int ret = -1;
+
+    if (!passwd) {
+        LOGE("Null passwd provided");
+        return ret;
+    }
+
+    if (strlen(passwd) < MIN_PASSWD_LEN) {
+        LOGE("Passwd too short");
+        return ret;
+    }
+
+    ret = sanitize_storage_path(storage_path);
+    if (ret < 0) {
+        LOGE("Invalid storage path");
+        return ret;
+    }
+
+    ret = get_private_storage_path(private_dir_path, storage_path);
+    if (ret < 0) {
+        LOGE("Error getting private storage");
+        return ret;
+    }
+
+    ret = get_key_storage_path(key_storage_path, storage_path);
+    if (ret < 0) {
+        LOGE("Error getting private storage");
+        return ret;
+    }
+
+    ret = EFS_get_status(storage_path);
+    if (ret != STORAGE_ENCRYPTION_COMPLETED) {
+        LOGE("Unable to unlock storage. Storage encryption failed.");
+        return ret;
+    }
+
+    ret =
+        mount_ecryptfs(private_dir_path, storage_path, passwd,
+               key_storage_path);
+    if (ret < 0) {
+        LOGE("Error mounting private storage");
+        return ret;
+    }
+
+    LOGI("Secure storage %s unlocked", storage_path);
+    return 0;
+}
+\end{lstlisting}
+
+Integrity means guaranteeing that the data has not been tampered with. For the encrypted data, the eCryptfs module handles the integrity of the files. For the encrypted master key, there is a hash value which is stored with the master key in its encrypted location. If any modifications are made to the encrypted master key, the hash value computed when decrypting the key will not correspond with the one stored.
+
+In order to offer the required functionalities, the EFS Tools library needs to perform operations similar to those described in \labelindexref{Section}{sub-sec:encrypt-dir-ecryptfs}. Note that since the library is meant to run on Android, there is no \textit{ecryptfs-utils} package and there are a number of other tools that would normally be available on a Linux system but are not present. Therefore, some operations (e.g. keyring operations) are done by interacting directly with the kernel through system calls, while other operations (e.g copying a file) are executed directly in code.
+
+For example, the following flow describes the operations that take place upon creation of a secure storage. Similar to the example in the previous chapter, the encrypted data for a given \texttt{path/folder} is stored in \texttt{path/.folder}.
+
+\tikzstyle{block} = [rectangle, draw, fill=blue!20, 
+    text width=7cm, text centered, rounded corners, minimum height=1cm]
+\tikzstyle{line} = [draw, -latex']
+
+\begin{figure}[!h]
+\centering 
+\begin{tikzpicture}[node distance = 2cm, auto]
+    % Place nodes
+    \node [block] (createdir) {Create EFS storage private directory};
+    \node [block, below of=createdir] (gencrypto) {Generate cryptographic primitives};
+    \node [block, below of=gencrypto] (storecrypto) {Encrypt and store cryptographic primitives};
+	\node [block, below of=storecrypto] (mount) {Mount eCryptfs on top of private directory};
+	\node [block, below of=mount] (copy) {Copy data to EFS storage directory};
+	\node [block, below of=copy] (remove) {Remove data from local storage};
+	\node [block, below of=remove] (unmount) {Unmount EFS storage directory};
+	\node [block, below of=unmount] (done) {Done};
+    % Draw edges
+    \path [line] (createdir) -- (gencrypto);
+    \path [line] (gencrypto) -- (storecrypto);
+    \path [line] (storecrypto) -- (mount);
+    \path [line] (mount) -- (copy);
+    \path [line] (copy) -- (remove);
+    \path [line] (remove) -- (unmount);
+    \path [line] (unmount) -- (done);
+\end{tikzpicture}
+\caption{Creating a secure storage}
+\label{fig:create-storage-multi-user}
+\end{figure}
+
+Aside from the library which is used by the native service, there is also a command-line tool which can be used to manage storages. 
+
+\begin{lstlisting}[numbers=none, basicstyle=\footnotesize, caption=efs-tools binary, label=lst:efs-tools]
+# efs-tools                                              
+Tool to manage encrypted storages
+Usage: efs-tools storage <command> <params>
+Posible commands
+create
+	->efs-tools storage create <path> <password>
+unlock
+	->efs-tools storage unlock <path> <password>
+lock
+	->efs-tools storage lock <path>
+remove
+	->efs-tools storage remove <path>
+change password
+	->efs-tools storage change_passwd <path> <old_password> <new_password>
+restore
+	->efs-tools storage restore <path> <password>
+\end{lstlisting}
 
 \section{Native Service}
 \label{sec:native-service-multi-user}
@@ -101,12 +226,12 @@ Furthermore, in the framework, several Android control systems and user interfac
 
 \todo{stuff}
 
-\section{User Interface}
-\label{sec:interface-multi-user}
+\section{Issues}
+\label{sec:issues-multi-user}
 
 \todo{stuff}
 
-\section{Issues}
-\label{sec:issues-multi-user}
+\section{Building and Testing}
+\label{sec:build-test-multi-user}
 
 \todo{stuff}
