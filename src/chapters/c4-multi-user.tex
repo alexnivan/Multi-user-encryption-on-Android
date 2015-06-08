@@ -106,7 +106,7 @@ Container management represents the operations of creating and destroying a secu
 
 Here we have the function that unlocks a storage.
 
-\begin{lstlisting}[basicstyle=\small, language=C, caption=EFS unlock operation, label=lst:efs-unlock]
+\begin{lstlisting}[basicstyle=\ttfamily\small, language=C, caption=EFS unlock operation, label=lst:efs-unlock]
 int EFS_unlock(char *storage_path, char *passwd)
 {
     char private_dir_path[MAX_PATH_LENGTH];
@@ -222,7 +222,7 @@ restore
 The native service is the communication medium between the C library presented in the previous section and the upper layers of the system. Its main function is to handle requests made by the Java EFS Service, situated in the Android Framework. However, other system entities can make requests.
 
 In order to make a native service in Android, one must add the relevant code in the init script.
-For the \texttt{efsserver} native service, the init entry is the following.
+For the \texttt{efsserver} native service, the init entry is as follows.
 
 \begin{lstlisting}[numbers=none, caption=efsserver init entry, label=lst:efsserver-init]
 service efs-server /system/bin/efs-server
@@ -233,19 +233,159 @@ service efs-server /system/bin/efs-server
 The first line defines the service named efs-server and specifies the location of the executable.
 The second line specifies the service class. This is less relevant at the moment. Finally, the last line specifies that the service requires a socket and also the name, type, access rights, owner and group. At startup, init creates a socket with the desired options in \texttt{/dev/sockets/efs-server} and executes \texttt{/system/bin/efs-server}.
 
-What efs-server does, exactly, is to listen for commands sent to the above socket. It is written in C++ and uses a class derived from FramworkListener class present in Android. This is a specialized class which handles communication through the socket. It supports registering commands and for every request received, it iterates over the list of known commands. If the command is found, the appropriate function is called. Otherwise, an error code is returned to the requester. 
+What efs-server does, exactly, is to listen for commands sent to the above socket. It is written in C++ and uses classes derived from the \texttt{FrameworkListener} and \texttt{FrameworkCommand} classes present in Android. These are specialized classes which handle communication through the socket.
 
-\section{Java Framework}
-\label{sec:java-frmwrk-multi-user}
+\texttt{FrameworkListener} supports registering multiple \texttt{FrameworkCommand} objects. For every request received, it iterates over the list of known commands, searching for one matching the request. If the command is found, the appropriate function is called. Otherwise, an error code is returned to the requester.
+\newpage
 
-\todo{stuff}
+\begin{lstlisting}[language=C++, caption=Command Listener Initialization, label=lst:cmd-init]
+CommandListener::CommandListener() :
+                 FrameworkListener("efs-server", true) {
+    registerCmd(new EncryptedFileStorageCmd());
+}
+
+CommandListener::EncryptedFileStorageCmd::EncryptedFileStorageCmd():
+                 FrameworkCommand("efs-server") {
+}
+\end{lstlisting}
+
+Note that in the above, the use of \texttt{efs-server} string in both the \texttt{FrameworkListener} and the \texttt{FrameworkCommand} constructor is purely coincidental. The first represents the name of the socket the Listener should use, while the second is the name the of the command.
+
+\section{Android Framework}
+\label{sec:android-frmwrk-multi-user}
+
+The parts of the system which have been discussed up to this point revolve around the notion of secure storage and managing multiple such containers. The Android's Java Framework is where the changes that enable multi-user encryption and integrate it into the user interface have been made.
+
+\subsection{System Service}
+\label{sub-sec:system-service-multi-user}
+
+The first step is to create a System Service. This service is the connection between the native service and the rest of the framework. The mechanism through which this connection is achieved is an Android-specific IPC(Interprocess Communication\abbrev{IPC}{Interprocess Communication}) called a \texttt{Binder}.
+
+%http://rts.lab.asu.edu/web_438/project_final/CSE_598_Android_Architecture_Binder.pdf
+A \texttt{Binder} is defined as a low overhead Remote Procedure call utility which facilitates synchronous reliable communication across processes. It is an elaborate framework and a binder kernel driver resides at the heart of this framework.
+
+Although android supports all of the traditional IPC mechanisms supported by the Linux kernel, these mechanisms are not used by OS libraries and platform API's to perform IPC. The preferred method is through a framework which spans over the Linux kernel layer, the middleware and the application layer called \texttt{Binder framework}.
+
+Applications access the binder’s functionality through the Binder interface exposed at the Java API layer. The Java implementation of the Binder interface in turn access the Binder interface implemented at the middleware layer. The middleware is exposed to the Java layer through JNI\abbrev{JNI}{Java Native Interface} wrappers. The middle ware layer is actually responsible for performing marshalling and unmarshalling of objects and communicating with the Binder kernel driver using a low level communication protocol.
+
+The EFS Service used to expose the storage operations uses, like every other Android system service, the Binder mechanism in order to provide access to the calling component. The difference from the figure below is that the caller is not necessarily an Activity, as it can also be another Service.
+
+\begin{figure}[h!]
+\centering
+    \includegraphics[width=0.9\textwidth]{src/img/binder/binderarch.png}
+\caption{Binder Framework Architecture}
+\end{figure}
+
+An example of a call to the service is provided to showcase how the argument marshalling and binder transaction are done in code.
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[language=Java, caption=lockUserData service method, label=lst:lock-user-data-multi-user]
+/**
+ * Lock user data
+ */
+public int lockUserData(int userId)
+					throws RemoteException {
+	Parcel _data = Parcel.obtain();
+	Parcel _reply = Parcel.obtain();
+	int _result;
+	try {
+		_data.writeInterfaceToken(DESCRIPTOR);
+		_data.writeInt(userId);
+		mRemote.transact(Stub.TRANSACTION_lockUserData, _data, _reply, 0);
+		_reply.readException();
+		_result = _reply.readInt();
+	} finally {
+		_reply.recycle();
+		_data.recycle();
+	}
+	return _result;
+}
+\end{lstlisting}
+\end{minipage}
+
+\subsection{User Management and Interface}
+\label{sub-sec:user-mngmt-inter-multi-user}
+
+The second step is to make the relevant modifications in the framework in order to manage multiple encrypted users. Also, some changes to various Activities in the Settings Application need to be made.
+
+The way multi-user Android systems work is that there is a separate data directory for each user and a separate media directory per user. This projects encrypts data directory, but it can be extended to the media directory as well.
+
+The users are represented internally by integers. The default user(the owner) is user 0. Users created by the owner are identified by consecutive integers beginning with 10, with a limit of 8 users. Each user has a data folder in \texttt{/data/user/id}, where \text{id} is the integer representing that user.
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[numbers=none, caption=User Data Directories, label=lst:usr-data-multi-user]
+# ls -l /data/user/                                             
+lrwxrwxrwx root     root              2000-03-11 17:07 0 -> /data/data/
+drwxrwx--x system   system            2000-03-11 17:35 10
+drwxrwx--x system   system            2000-03-11 17:37 12
+\end{lstlisting}
+\end{minipage}
+
+An exception to this rule is the owner for which the data is stored in \texttt{/data/data} and \texttt{/data/user/0} is a link to this directory. This is mainly due to backwards compatibility requirements. For simplicity reasons, the project only handles encryption of  secondary users(those created by the owner).
+
+To begin, the \texttt{UserInfo} class requires the addition of a flag that marks whether the user in question is encrypted.
+\begin{lstlisting}[language=Java, numbers=none, caption=Encrypted User Flag, label=lst:encr-flag-multi-user]
+/**
+ * Encrypted
+ */
+public static final int FLAG_ENCRYPTED = 0x00000080;
+\end{lstlisting}
+The class constructor takes, among others, a \texttt{flags} parameter, which is an integer containing a bitwise or between several flags. The method for determining if a given user is encrypted using this parameter is the following.
+\begin{lstlisting}[language=Java, numbers=none, caption=isEncrypted method, label=lst:encr-method-multi-user]
+public boolean isEncrypted() {
+	return (flags & FLAG_ENCRYPTED) == FLAG_ENCRYPTED;
+}
+\end{lstlisting}
+
+Upon creation, the user is prompted with a dialog which asks whether the newly created user should be encrypted.
+
+\begin{figure}[h!]
+\centering
+    \includegraphics[width=0.9\textwidth]{src/img/multi-user/newuser.png}
+\caption{User Creation}
+\end{figure}
+
+As mentioned in \labelindexref{Section}{sec:c-multi-user}, the user needs to provide a password which will be used to encrypt the master key. To avoid making the user creation process to cumbersome, instead of an extra dialog prompting for a user password, a default pin code \texttt{0000} is set for the new user. This can be modified by changing the password from the Settings Application.
+
+Only one user may be active at any given time. When switching users, it is necessary to check whether the current user is encrypted. If this is the case, the user data directory needs to be locked. An example of doing this is presented below. This code is from the \texttt{UserSwitcherController} class. Highlighted in green are the additions made to the already existent code.
+
+\lstdefinestyle{custom}{
+	language=Java,
+	basicstyle=\ttfamily\small,
+	moredelim=**[is][\color{green!65!black}]{@}{@},
+}
+
+\begin{lstlisting}[style=custom]
+private void switchToUserId(int id) {@
+	final IBinder binder = ServiceManager.getService("efsservice");
+	final int currentUser = ActivityManager.getCurrentUser();
+	IEFSService service = null;
+	if (binder != null && ambinder != null) {
+		service = IEFSService.Stub.asInterface(binder);
+	}@
+	try {
+		ActivityManagerNative.getDefault().switchUser(id);@
+		if (service != null &&
+		    mUserManager.getUserInfo(currentUser).isEncrypted())
+			service.lockUserData(currentUser);@
+	} catch (RemoteException e) {
+		Log.e(TAG, "Couldn't switch user.", e);
+	}
+}
+\end{lstlisting}
+
+The same operation takes place when the device enters sleep mode either by the actioning of the power button or because the timeout set by the user expired. Shutting down the device does not need to be treated since when the device will be turned back on, the storage will not be mounted by default.
+
+Similarly, when the user enters his password at the lockscreen, the storage corresponding to the data directory of the current user is unlocked.
+
+The result is that, for each encypted user, the data directory is only ever unlocked starting the moment the user introduces the password and ending when the device is either switched to another user or in sleep or turned off.
 
 \section{Issues}
 \label{sec:issues-multi-user}
 
 \todo{stuff}
 
-\section{Building and Testing}
-\label{sec:build-test-multi-user}
+\section{Building}
+\label{sec:build-multi-user}
 
 \todo{stuff}
