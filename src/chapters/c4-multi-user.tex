@@ -284,7 +284,7 @@ An example of a call to the service is provided to showcase how the argument mar
  * Lock user data
  */
 public int lockUserData(int userId)
-					throws RemoteException {
+                        throws RemoteException {
 	Parcel _data = Parcel.obtain();
 	Parcel _reply = Parcel.obtain();
 	int _result;
@@ -383,9 +383,156 @@ The result is that, for each encypted user, the data directory is only ever unlo
 \section{Issues}
 \label{sec:issues-multi-user}
 
-\todo{stuff}
+This chapter covers some of the issues encountered during the development of this project, as well as the issues that still remain. It is noteworthy that the project is a proof of concept and, therefore, is expected to have some shortcomings.
+
+\subsection{SELinux}
+\label{sub-sec:selinux-multi-user}
+
+%http://selinuxproject.org/page/NB_Overview
+The first of the issues is related to SELinux. SELinux is the primary Mandatory Access Control (MAC) mechanism built into a number of GNU/Linux distributions. SELinux operates using policies that define what access to resources and which operations on these resources are allowed. It is able to confine an application to its own domain, offering the minimum permissions required. It also assures that actions which are not allowed by policy are stopped, in order to attempt to prevent any damage.
+
+To check wheter SELinux is running, the following command can be executed.
+\begin{lstlisting}[numbers=none, caption=Checking SELinux status, label=lst:selinux-multi-user]
+# getenforce
+Enforcing
+\end{lstlisting}
+The result will be one of three values: \texttt{Enforcing, Permissive, Disabled}. \texttt{Enforcing} means SELinux is active and the policy will be applied. \texttt{Permissive} mode only logs actions that violate the policy, but will not prevent them. \texttt{Disabled} means SELinux is not active.
+
+Given the fact that the project encrypts the data directory, it would require access permission to a wide range of files. Although SELinux offers a tool called \texttt{audit2allow} that transforms the output of the SELinux log into rules ready to be integrated into the policy, giving an application such extensive permissions is not recommended. Since the issue is beyond the scope of this project, a decision was made to disable SELinux during the development phase, thus simplifying the process.
+
+\subsection{User Switching}
+\label{sub-sec:user-switch-multi-user}
+
+This issue was caused by how user switching works. Android users do not correspond directly to users in the underlying Linux system. Because of this, Android has more liberty in managing users. For example, in a classic Linux system, if a user has a password set, this password is requested at user switch. In Android, the password is requested at the lock screen, after the user switch has already taken place.
+
+The actual issue arises from the fact that some applications attempt to access user data before the password is provided. Therefore, in the case of an encrypted user, these applications would try to access the data directory before it is mounted. For some of the applications, including the Launcher, this results in a crash.
+
+For the purpose of this project, a workaround was used to circumvent this issue. When the password is entered, the user is stopped, the data directory is unlocked and then the user is started again. This way, the applications will be restarted and the data will be available. The proper method to deal with this problem would be to request a framework restart from the system. This, however, would incur restarting all users.
+
+A small issue related to this one was that the crash messages for the applications would remain in the system queue and appear to the user even after the restart. This was solved by temporarily disabling dialogs between the user switch and the storage unlock.
+
+\subsection{Miscellaneous}
+\label{sub-sec:misc-mult-user}
+
+Other, more minor issues still remain. Mostly, they are caused by simplifications used when developing. However, the proof of concept remains valid even with these issues present.
+
+One issue was already mentioned: the fact that encryption of the owner is not permitted. This is a more complex case than the secondary users for a number of reasons:
+\begin{itemize}
+\item the encryption for the secondary users is done at creation, with no processes accessing the data directory; for the owner, the framework would need to be stopped
+\item switching to the primary user would require the framework to be stopped, since user 0 cannot be stopped without doing so
+\item the same as above applies for unlocking the device after it has been in sleep and the storage containing the data dir has been locked
+\end{itemize}
+
+Another shortcoming is the fact that encrypted users only work with PIN used for locking. Passwords are easy to integrate, since they would only require similar changes to those done for PIN codes. Patterns are also not an issue, since they are converted to a string internally, a string which can be used in place of a password for the storage. The only real issue is with more complex locking methods, like facial recognition.
+
+One final issue to discuss is the what happens to background processes when the data directory is locked. In the current state, they crash as soon as an operation on a file from the data directory is attempted. This is a drawback for many applications. A possible fix would be something similar to what was presented in \labelindexref{Section}{sub-sec:and-priv-defreez}.
 
 \section{Building}
 \label{sec:build-multi-user}
 
-\todo{stuff}
+This section describes the process of building the project using the emulator provided in AOSP(Android Open Source Project\abbrev{AOSP}{Android Open Source Project}). The emulator used will be the 64-bit version, but the 32-bit one can be used with the proper alteration of the instructions below. Note that some commands are too long to be written on a single line. Any line not starting from the far left should be treated as a continuation of the previous one. It is important to use the same branch of the AOSP repository, since the patches will most likely not apply to other versions. 
+
+First, repo client has to be installed.
+
+\begin{lstlisting}[numbers=none]
+mkdir ~/bin
+PATH=~/bin:$PATH
+curl http://commondatastorage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+chmod a+x ~/bin/repo
+\end{lstlisting}
+
+Next, in order to download the AOSP source code:
+\begin{lstlisting}[numbers=none]
+AOSP_TREE=$PWD/AOSP
+mkdir $AOSP_TREE
+cd $AOSP_TREE
+repo init -u https://android.googlesource.com/platform/manifest -b android-5.0.2_r1
+repo sync -j8
+\end{lstlisting}
+
+The next step is to download the project source code and apply the integration patches:
+\begin{lstlisting}[numbers=none]
+git clone https://github.com/catalinionita/Ecryptfs-Tools-for-Android.git $AOSP_TREE/external/efs-tools
+cd $AOSP_TREE
+external/efs-tools/integration/apply_patches.sh
+\end{lstlisting}
+
+The build environment needs to be setup. The steps to install all required packages for different Linux distributions are in the AOSP wiki.\footnote{\url{http://source.android.com/source/initializing.html\#setting-up-a-linux-build-environment}}
+
+To build the Android tree and the emulator:
+\begin{lstlisting}[numbers=none]
+source build/envsetup.sh
+lunch aosp_x86_64-eng
+make update-api
+make -j8
+\end{lstlisting}
+
+Next, the kernel is required and eCryptfs support needs to be enabled:
+\begin{lstlisting}[numbers=none]
+git clone https://android.googlesource.com/kernel/goldfish.git $AOSP_TREE/goldfish-kernel
+cd $AOSP_TREE/goldfish-kernel
+git checkout android-goldfish-3.10
+\end{lstlisting}
+
+To start with the default configuration for the x64 kernel:
+\begin{lstlisting}[numbers=none]
+make ARCH=x86_64 x86_64_emu_defconfig
+\end{lstlisting}
+
+The following lines need to be added to the configuration file. Edit \$AOSP_TREE/goldfish-kernel/.config
+\begin{lstlisting}[numbers=none]
+CONFIG_KEYS=y
+CONFIG_CRYPTO=y
+CONFIG_CRYPTO_ALGAPI=y
+CONFIG_CRYPTO_BLKCIPHER=y
+CONFIG_CRYPTO_HASH=y
+CONFIG_CRYPTO_MANAGER=y
+CONFIG_CRYPTO_MD5=y
+CONFIG_CRYPTO_ECB=y
+CONFIG_CRYPTO_CBC=y
+CONFIG_CRYPTO_AES=y
+CONFIG_ECRYPT_FS=y
+\end{lstlisting}
+To disable SELinux support, comment the line beginning with \texttt{CONFIG_SECURITY_SELINUX} in the same file.
+
+To build the kernel, the cross-compiler path must be set.
+\begin{lstlisting}[numbers=none]
+export CROSS_COMPILE=$AOSP_TREE/prebuilts/gcc/linux-x86/x86/x86_64-linux-android-4.9/bin/x86_64-linux-android-
+make ARCH=x86_64 CC="${CROSS_COMPILE}gcc -mno-android" bzImage
+\end{lstlisting}
+
+Once the kernel has been built, the emulator can be started as follows:
+\begin{lstlisting}[numbers=none]
+ emulator -kernel $AOSP_TREE/goldfish-kernel/arch/x86/boot/bzImage -skin WXGA800-7in -prop fw.max_users=8 -prop fw.show_multiuserui=1 -qemu -m 1024 -enable-kvm
+\end{lstlisting}
+It will start a 7 inch emulator with multi-user support. See all emulator options on the developer wiki.\footnote{\url{http://developer.android.com/tools/help/emulator.html}}
+
+To check that the C library is functional, the test suite included in the source code repository can be used.
+\begin{lstlisting}[numbers=none]
+$AOSP_TREE/external/efs-tools/test/testsuite.sh
+\end{lstlisting}
+
+Testing multi-user encryption is not automated at this point. However, \texttt{adb shell} can be used to connect to the device. Once connected, to check whether a storage is mounted or not, the \texttt{mount} command is used.
+
+\begin{lstlisting}[numbers=none, style=custom]
+# mount
+rootfs / rootfs ro,seclabel,relatime 0 0
+tmpfs /dev tmpfs rw,seclabel,nosuid,relatime,mode=755 0 0
+devpts /dev/pts devpts rw,seclabel,relatime,mode=600 0 0
+proc /proc proc rw,relatime 0 0
+sysfs /sys sysfs rw,seclabel,relatime 0 0
+selinuxfs /sys/fs/selinux selinuxfs rw,relatime 0 0
+debugfs /sys/kernel/debug debugfs rw,relatime 0 0
+none /acct cgroup rw,relatime,cpuacct 0 0
+none /sys/fs/cgroup tmpfs rw,seclabel,relatime,mode=750,gid=1000 0 0
+tmpfs /mnt/asec tmpfs rw,seclabel,relatime,mode=755,gid=1000 0 0
+tmpfs /mnt/obb tmpfs rw,seclabel,relatime,mode=755,gid=1000 0 0
+none /dev/cpuctl cgroup rw,relatime,cpu 0 0
+/dev/block/platform/sdhci-tegra.3/by-name/APP /system ext4 ro,seclabel,relatime,user_xattr,acl,barrier=1,data=ordered 0 0
+/dev/block/platform/sdhci-tegra.3/by-name/CAC /cache ext4 rw,seclabel,nosuid,nodev,noatime,errors=panic,user_xattr,acl,barrier=1,nomblk_io_submit,data=ordered 0 0
+/dev/block/platform/sdhci-tegra.3/by-name/UDA /data ext4 rw,seclabel,nosuid,nodev,noatime,errors=panic,user_xattr,acl,barrier=1,nomblk_io_submit,data=ordered 0 0
+/dev/fuse /mnt/shell/emulated fuse rw,nosuid,nodev,relatime,user_id=1023,group_id=1023,default_permissions,allow_other 0 0@
+/data/user/.10 /data/user/10 ecryptfs rw,seclabel,relatime,ecryptfs_fnek_sig=180e26f6e1e174f8,ecryptfs_sig=81661eb0fc6a797b,ecryptfs_cipher=aes,ecryptfs_key_bytes=32 0 0@
+\end{lstlisting}
+
+The highlighted line corresponds to an unlocked storage for user 10. The absence of this line would mean the directory is locked.
