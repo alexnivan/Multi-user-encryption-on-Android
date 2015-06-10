@@ -6,10 +6,9 @@ This chapter explains more detailed the concept of encryption and presents the h
 \section{Encryption explained}
 \label{sec:enc-explained}
 
-%http://library.ahima.org/xpedio/groups/public/documents/ahima/bok1_048923.hcsp?dDocName=bok1_048923
 Encryption is a mathematical transformation which scrambles data requiring protection (plaintext) into a form not easily understood by unauthorized entities (ciphertext). After being transformed into ciphertext, the plaintext appears random and does not reveal anything about the content of the original data.
 
-Encryption is a reversible transformation. This reversal process is referred to as decryption. An encryption process has a corresponding decryption process, which is used to reverse the encrypted data (ciphertext) back to its original content (plaintext).
+Encryption is a reversible transformation. This reversal process is referred to as decryption. An encryption process has a corresponding decryption process, which is used to reverse the encrypted data (ciphertext) back to its original content (plaintext).\cite{enc-basics}
 
 Each encryption and decryption function requires a cryptographic key. A cryptographic key is a string of binary digits used as an input to encryption and decryption functions.
 
@@ -18,13 +17,13 @@ Each encryption and decryption function requires a cryptographic key. A cryptogr
 \begin{minipage}{0.45\textwidth}
 \centering
   \includegraphics[width=.9\linewidth]{src/img/encrypt/plain2cipher.jpg}
-  \caption{Encryption}
+  \caption{Encryption\cite{enc-basics}}
   \label{fig:encrypt-fig}
 \end{minipage}\hfill
 \begin{minipage}{0.45\textwidth}
 \centering
   \includegraphics[width=.9\linewidth]{src/img/encrypt/cipher2plain.jpg}
-  \caption{Decrpytion}
+  \caption{Decrpytion\cite{enc-basics}}
   \label{fig:decrypt-fig}
 \end{minipage}
 \end{figure}
@@ -37,11 +36,11 @@ Similarly, on each write operation, all sectors that are affected must be re-enc
 
 In order to be able to de/encrypt data, the disk encryption system needs to know the unique secret key associated with it. Whenever the encrypted block device or folder in question is to be mounted, its corresponding key (called henceforth its \textit{master key}) must be supplied.
 
-The following are some of the possible methods of storing and cryptographically securing a master key with a keyfile:
+The following are some of the possible methods of storing and cryptographically securing a master key with a keyfile\cite{disk-enc}:
 \begin{enumerate}
 \item \textbf{Stored in a plaintext keyfile}
 
-Simply storing the master key in a file (in readable form) is the simplest option. The file, called a \textit{keyfile}, can be placed on a removable device that is only connected to the computer when mounting the encrypted parts of the disk.
+The master key is stored in a file in readable form. The file, called a \textit{keyfile}, can be placed on a removable device that is only connected to the computer when mounting the encrypted parts of the disk.
 
 \item \textbf{Randomly generated on-the-fly for each session}
 
@@ -80,6 +79,7 @@ The system will still be vulnerable to:
 \item Attackers who are able to gain physical access to the computer while it is running (even if you use a screenlocker), or very shortly after it was running, if they have the resources to perform a cold boot attack.
 \item A government entity which may obtain your keys/passphrases using various techniques of coercion. It may be legal for law enforcement agencies to do so if they have suspicions that you might be hiding something of interest.
 \end{itemize}
+\cite{disk-enc}
 
 \subsection{Data Encryption vs System Encryption}
 \label{sub-sec:de-vs-se}
@@ -88,8 +88,8 @@ The system will still be vulnerable to:
 In modern computing systems, there are many background processes that may cache/store information about user data or parts of the data itself in non-encrypted areas of the hard drive, like:
 \begin{itemize}
 \item swap partitions
-\item /tmp (temporary files created by user applications)
-\item /var (log files and databases)
+\item temporary files created by user applications
+\item log files and databases
 \end{itemize}
 
 
@@ -156,7 +156,7 @@ A more in detail comparison of block-based encryption and file-based encryption 
 
 As mentioned before, eCryptfs is a stacked file system which manages data encryption. Now, details about it and the advantages and disadvantages is brings will be presented.
 
-Originally authored by Michael Halcrow and the IBM Linux Technology Center, eCryptfs is derived from Erez Zadok's Cryptfs, and the FiST framework for stacked filesystems. eCryptfs extended Cryptfs to provide advanced key management and policy features.\footnote{\url{http://uni-smr.ac.ru/archive/linux/linuxsymposium_procv1.pdf\#page=209}}
+Originally authored by Michael Halcrow and the IBM Linux Technology Center, eCryptfs is derived from Erez Zadok's Cryptfs, and the FiST framework for stacked filesystems. eCryptfs extended Cryptfs to provide advanced key management and policy features.\cite{ecryptfs-paper}
 
 It has already been mentioned that eCryptfs uses a randomly generated File Encyption Key(FEK) for each file and that this key is also encrypted. Also noteworthy is that the FEK in its encrypted form is actually stored together with the encrypted file. This adds the posibility of transfering a file while encrypted with the ability to gain access with the proper credentials.
 
@@ -165,9 +165,9 @@ It has already been mentioned that eCryptfs uses a randomly generated File Encyp
 
 eCryptfs is implemented as a kernel module augmented with various userspace utilities for performing key management functions.
 
-\fig[scale=0.24]{src/img/ecryptfs/arch.png}{img:ecryptfs-arch}{eCryptfs Architecture}
+\fig[scale=0.24]{src/img/ecryptfs/arch.png}{img:ecryptfs-arch}{eCryptfs Architecture\cite{ecryptfs-paper}}
 
-The kernel module encrypts the file contents using the kernel cryptographic API. A keystore component extracts the header information from individual files and forwards this data to a callout application. The callout application evaluates the header information against the target policy and performs various operations, such as prompting the user for a passphrase or decrypting a session key with a private key.
+The kernel module encrypts the file contents using the kernel cryptographic API. A keystore component extracts the header information from individual files and forwards this data to a callout application. In turn, this application evaluates the header information against the target policy and performs various operations, e.g. prompting the user for a passphrase.
 
 Key management is done in userspace for two main reasons. The first is to reduce the complexity of the code running in kernelspace. The second is due to the fact that management operation are only required when opening/closing a file. Since these operations are relatively infrequent, the overhead does not constitute an issue.
 
@@ -176,7 +176,7 @@ Below is the flow of an open operation on a system using ecryptfs.
 \begin{figure}[h!]
 \centering
     \includegraphics[width=0.9\textwidth]{src/img/ecryptfs/newfile.png}
-\caption{eCryptfs Open File Process}
+\caption{eCryptfs Open File Process\cite{ecryptfs-paper}}
 \end{figure}
 
 \subsection{Cryptographic Operations}
@@ -189,7 +189,7 @@ The underlying file format for eCryptfs is based on the OpenPGP format described
 \begin{figure}[h!]
 \centering
     \includegraphics[width=0.92\textwidth]{src/img/ecryptfs/fileformat.png}
-\caption{eCryptfs File Format}
+\caption{eCryptfs File Format\cite{ecryptfs-paper}}
 \end{figure}
 
 An aspect where eCryptfs deviates from the standard is the introduction of \textit{data extents}. This is done in order to accommodate random access while maintaining performance. The OpenPGP standard assumes that the encryption and decryption is done as an atomic operation over the entire data contents of the file; there is no concept of a partially encrypted or decrypted file. The data is encrypted using what is known as a chained block cipher(CBC\abbrev{CBC}{Chained Block Cipher}). This means that each block of plaintext, with the exception of the first, is combined with the previous block ciphertext through a XOR operation before being encrpyted. Evidently, the same process must be followed when decrypting. Thus, reading a byte from a file requires decrypting all leading bytes. Conversely, writing a byte incurs encrypting all trailing bytes from that file. For large files, reading a byte towards the end of the file or writing a byte at the beginning of it would be inefficient.
@@ -209,14 +209,14 @@ eCryptfs aims to operate transparently. The fact that files are encrypted should
 Every file receives a randomly generated session key, which is used in the bulk data encryption of the file contents. This session key is stored in the cryptographic metadata for the file, which is in turn cached in the user’s session keyring. When an application closes a newly created file, eCryptfs encrypts the session key once for each authentication token associated with that file, as dictated by policy, then writes these encrypted session keys into packets in the header of the underlying file.
 When an application later opens the file, eCryptfs reads in the encrypted session keys and chains them off of the cryptographic metadata for the file. eCryptfs looks through the user’s authentication tokens to attempt to find a match with the encrypted session keys; it uses the first one found to decrypt the session key. In the event that no authentication tokens in the user’s session keyring can decrypt any of the encrypted session key packets, eCryptfs falls back on policy. This policy can dictate actions such as querying PKI modules for the existence of private keys or prompting the user for a passphrase.
 
-Passphrase authentication tokens in eCryptfs exist in three forms: non-passphrased, saltless, and salted. In order to address the threat of passphrase dictionary attacks, eCryptfs utilizes the method whereby a salt value is concatenated with a passphrase to generate a passphrase identifier. The concatenated value is iteratively hashed (65,537 times by default) to generate the identifying signature for the salted authentication token.
+Passphrase authentication tokens in eCryptfs exist in three forms: non-passphrased, saltless, and salted. In order to address the threat of passphrase dictionary attacks, eCryptfs utilizes the method whereby a salt value is concatenated with a passphrase to generate a passphrase identifier. The concatenated value is iteratively hashed (65,537 times by default) to generate the identifying signature for the salted authentication token.\cite{ecryptfs-paper}
 
-The key callout application is the primary contact between the eCryptfs kernel module and the userspace key management code. This callout application parses policy information from the target, which it interprets in relation to the header information in each file. It may then make calls through the PKI API in order to satisfy pending public key requests, or it may go searching for a salted passphrase with a particular signature. The eCryptfs daemon listens to a socket (for which the location is written to the user’s session keyring). Whenever policy calls for the user to be prompted for a passphrase, the callout application can retrieve the socket’s location and use it to request the daemon to prompt the user; the daemon then returns the user’s passphrase to the callout application.
+The key callout application is the primary contact between the eCryptfs kernel module and the userspace key management code. This callout application parses policy information from the target, which it interprets in relation to the header information in each file. It may then make calls through the PKI API in order to satisfy pending public key requests, or it may go searching for a salted passphrase with a particular signature. The eCryptfs daemon listens to a socket and whenever policy calls for the user to be prompted for a passphrase, the callout application can retrieve the socket’s location and use it to request the daemon to prompt the user; the daemon then returns the user’s passphrase to the callout application.
 
 \subsection{Encrypting a Directory Using eCryptfs}
 \label{sub-sec:encrypt-dir-ecryptfs}
 
-This is an example of how to encrypt a user directory. It relies on the \textit{ecryptfs-utils} package being installed. Although the operations can be performed manually, for the purpose of this example there is no need to go into such amount of detail. More details on the Arch Linux page on eCryptfs.\footnote{\url{https://wiki.archlinux.org/index.php/ECryptfs}}
+This is an example of how to encrypt a user directory. It relies on the \textit{ecryptfs-utils} package being installed. Although the operations can be performed manually, for the purpose of this example there is no need to go into such amount of detail. More details on the Arch Linux page on eCryptfs.\cite{ecryptfs}
 
 The name \texttt{secret} will be used for the created directory.
 

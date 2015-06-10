@@ -40,27 +40,24 @@ Android devices currently use dm-crypt to implement encryption.
 \subsection{dm-crpyt}
 \label{sub-sec:dm-crypt}
 
-%http://www.saout.de/misc/dm-crypt/
-dm-crypt is a transparent disk encryption subsystem in Linux kernel versions 2.6 and later. It is part of the device mapper infrastructure, and uses cryptographic routines from the kernel's Crypto API.
+dm-crypt is a transparent disk encryption subsystem in Linux kernel versions 2.6 and later. It is part of the device mapper infrastructure, and uses cryptographic routines from the kernel's Crypto API.\footnote{\url{http://www.saout.de/misc/dm-crypt/}}
 
 Device-mapper is a infrastructure introduced in the Linux 2.6 kernel that provides a generic way to create virtual layers of block devices that can do different things on top of real block devices.
-dm-crypt is implemented as a device mapper target and may be stacked on top of other device mapper transformations. It can thus encrypt whole disks (including removable media), partitions, software RAID volumes, logical volumes, as well as files. It appears as a block device, which can be used to back file systems, swap or as an LVM\abbrev{LVM}{Logical Volume Manager} physical volume.
+dm-crypt is implemented as a device mapper target and may be stacked on top of other device mapper transformations. It can thus encrypt whole disks (including removable media), partitions, software RAID volumes, logical volumes. It appears as a block device, which can be used to back file systems, swap or as an LVM\abbrev{LVM}{Logical Volume Manager} physical volume.
 
 \subsection{How Android Encryption Works}
 \label{sub-sec:and-enc-works}
 
-%https://source.android.com/devices/tech/security/encryption/
 Because Android uses dm-crypt, encryption works with Embedded MultiMediaCard (eMMC) and similar flash devices that present themselves to the kernel as block devices. Encryption is not possible with YAFFS, which talks directly to a raw NAND flash chip.
 
-The encryption algorithm is 128 Advanced Encryption Standard (AES\abbrev{AES}{Advanced Encryption Standard}) with cipher-block chaining (CBC\abbrev{CBC}{Cipher-Block Chaining}) and ESSIV:SHA256.\abbrev{ESSIV}{Encrypted salt-sector initialization vector}\abbrev{SHA}{Secure Hash Algorithm} The master key is encrypted with 128-bit AES via calls to the OpenSSL library. 128 bits or more must be used for the key.
+The encryption algorithm is 128 Advanced Encryption Standard (AES\abbrev{AES}{Advanced Encryption Standard}) with cipher-block chaining (CBC\abbrev{CBC}{Cipher-Block Chaining}) and ESSIV:SHA256.\abbrev{ESSIV}{Encrypted salt-sector initialization vector}\abbrev{SHA}{Secure Hash Algorithm} The master key is encrypted with 128-bit AES via calls to the OpenSSL library. 128 bits or more must be used for the key.\footnote{\url{https://source.android.com/devices/tech/security/encryption/}}
 
 In Android 5.0, hardware-backed storage of the encryption key using Trusted Execution Environment’s (TEE) signing capability (such as in a TrustZone) has been added.
 
 The two main components responsible for managing the encryption process are init and vold, i.e., the volume daemon which is responsible for most storage related tasks in Android. init calls vold, and vold sets properties to trigger events in init.
 
-In order to encrypt, decrypt or wipe /data, /data must not be mounted. However, in order to prompt for passwords, show progress, or suggest a data wipe, the framework must start and the framework requires /data to run. To bipass this issue, a temporary filesystem is mounted on /data. It does impose the limitation that in order to switch from the temporary filesystem to the true /data filesystem, the system must stop every process with open files on the temporary filesystem and restart those processes on the real /data filesystem. 
+In order to encrypt, decrypt or wipe /data, /data must not be mounted. However, in order to prompt for passwords, show progress, or suggest a data wipe, the framework must start and the framework requires /data to run. To bipass this issue, a temporary filesystem is mounted on /data. It does impose the limitation that in order to switch from the temporary filesystem to the true /data filesystem, the system must stop every process with open files on the temporary filesystem and restart those processes on the real /data filesystem.
 
-\newpage
 \section{Related Work}
 \label{sec:related-work}
 
@@ -69,7 +66,7 @@ There are other projects which tackle the issue of user data encryption. These w
 \subsection{Android Privacy through Encryption}
 \label{sub-sec:and-priv-defreez}
 
-One example is described by Daniel Defreez in his thesis titled "Android Privacy through Encryption".\footnote{\url{http://defreez.com/articles/thesis.pdf}}
+One example is described by Daniel Defreez in his thesis titled "Android Privacy through Encryption".\cite{defreez}
 It uses the eCryptfs file system in order to create a secure storage and mount it in a location in the unencrypted file system. Where the approach differs from the one described in this thesis is that the entire data partition is encrypted and the decryption is done at boot. It is worth noting that at the time Defreez proposed this solution, multi-user was not yet supported to such an extent in Android systems.
 
 In addition to the keying method used by eCryptfs, another level of security, which has been named \textit{boundary mode}, has been added. The reasoning behind this was to increase resilience against memory-based attacks. Normally, the FEKEK key must remain memory resident in order for the device to be able to access the file system. Boundary mode introduces a third level of keys, called \textit{boundary keys}, which are used to differentiate between the files that must be accessible for the system to remain functional and those that can remain encrypted. Therefore, the master key can be removed from memory when the device is locked, while maintaining relevant boundary keys in order to access certain files.
@@ -77,9 +74,9 @@ In addition to the keying method used by eCryptfs, another level of security, wh
 Since the eCryptfs kernel module does not have any supporting user space library in Android, an external library containg minimal functionality has been created. The handling of data encrypted with eCryptfs is handled through Vold. Vold is used to call the native library which generates the key from the user's passphrase and add it to the kernel keyring at boot.
 
 \subsection{EncFS for Android}
-\label{sub-sec:encfs}
+\label{sub-sec:encfs-and}
 
-Another example\footnote{\url{http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=6341374}} uses EncFS, a FUSE-based file-system offering file-system encryption on traditional desktop operating systems. EncFS uses the FUSE library and FUSE kernel module to provide the file- system interface and runs without any special permissions. Similar to eCryptfs, EncFS runs over an existing base file-system, and is responsible only for encryption.
+Another example\cite{encfs} uses EncFS, a FUSE-based file-system offering file-system encryption on traditional desktop operating systems. EncFS uses the FUSE library and FUSE kernel module to provide the file- system interface and runs without any special permissions. Similar to eCryptfs, EncFS runs over an existing base file-system, and is responsible only for encryption.
 
 Three major components are required to make EncFS work on any platform: kernel FUSE library support, user space libfuse, and EncFS binaries. To make an encryption file-system work on Android, a modified bootstrapping process and password login was integrated into the operating system framework.
 
