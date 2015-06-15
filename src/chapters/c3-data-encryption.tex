@@ -6,11 +6,11 @@ This chapter explains more detailed the concept of encryption and presents the h
 \section{Encryption explained}
 \label{sec:enc-explained}
 
-Encryption is a mathematical transformation which scrambles data requiring protection (plaintext) into a form not easily understood by unauthorized entities (ciphertext). After being transformed into ciphertext, the plaintext appears random and does not reveal anything about the content of the original data.
+Encryption is a mathematical transformation takes data requiring protection (plaintext) as input and outputs it into a form not easily understood by unauthorized entities (ciphertext). The ciphertext does not reveal anything about the content of the original data.
 
-Encryption is a reversible transformation. This reversal process is referred to as decryption. An encryption process has a corresponding decryption process, which is used to reverse the encrypted data (ciphertext) back to its original content (plaintext).\cite{enc-basics}
+Encryption can be reversed. This inverse transformation is referred to as decryption. "An encryption process has a corresponding decryption process, which is used to reverse the encrypted data (ciphertext) back to its original content (plaintext)\cite{enc-basics}."
 
-Each encryption and decryption function requires a cryptographic key. A cryptographic key is a string of binary digits used as an input to encryption and decryption functions.
+Both the encryption and decryption process use a cryptographic key which is a string of binary digits.
 
 \begin{figure}[h]
 \centering
@@ -28,13 +28,13 @@ Each encryption and decryption function requires a cryptographic key. A cryptogr
 \end{minipage}
 \end{figure}
 
-For the purposes of disk encryption, each blockdevice (or individual file in the case of stacked filesystem encryption) is divided into sectors of equal length, for example 512 bytes (4,096 bits). The encryption/decryption then happens on a per-sector basis, so the n'th sector of the blockdevice/file on disk will store the encrypted version of the n'th sector of the original data.
+In the case of disk encryption, each blockdevice or individual file (depending on encryption type) is split into equal chunks called sectors. The operations are then done on a per-sector basis. Therefore, there is a 1 to 1 correspondence between the encrypted sectors and the original data.
 
-Whenever the operating system or an application requests a certain fragment of data from the blockdevice/file, the whole sector (or sectors) that contains the data will be read from disk, decrypted on-the-fly, and temporarily stored in memory:
+Whenever a fragment of data from the blockdevice/file is necessary, the whole sector (or sectors) that contains the data will be read from disk, decrypted and temporarily stored in memory.
 
-Similarly, on each write operation, all sectors that are affected must be re-encrypted complelety (while the rest of the sectors remain untouched).
+Similarly, each write operation results in all sectors containing the data being re-encrypted completely.
 
-In order to be able to de/encrypt data, the disk encryption system needs to know the unique secret key associated with it. Whenever the encrypted block device or folder in question is to be mounted, its corresponding key (called henceforth its \textit{master key}) must be supplied.
+The cryptographic key corresponding to a blockdevice/file, called \textit{master key}, needs to be supplied every time the respective device is to be mounted.
 
 The following are some of the possible methods of storing and cryptographically securing a master key with a keyfile\cite{disk-enc}:
 \begin{enumerate}
@@ -44,7 +44,7 @@ The master key is stored in a file in readable form. The file, called a \textit{
 
 \item \textbf{Randomly generated on-the-fly for each session}
 
-In some cases, e.g. when encrypting swap space or a /tmp partition, it is not necessary to keep a persistent master key at all. A new throwaway key can be randomly generated for each session, without requiring any user interaction. This means that once unmounted, all files written to the partition in question can never be decrypted again by anyone - which in those particular use-cases is perfectly fine.
+In cases like swap space or a /tmp encryption, it is not necessary to keep a persistent master key. Instead, a new key can be randomly generated for each session. This means that once unmounted, all files written to the partition in question can never be decrypted again.
 
 \item \textbf{Stored in passphrase-protected form in a keyfile or on the disk itself}
 
@@ -56,7 +56,7 @@ It is usually not used for de/encrypting the disk data directly, though. For exa
 \subsection{Benefits of disk encryption}
 \label{sub-sec:benefits-enc}
 
-Disk encryption is the process of storing data on disk in an encrypted form. The files only become available to the operating system and applications in readable form while the system is running and unlocked with the corresponding key.
+Disk encryption is the process of storing data on disk in an encrypted form. The files only become available in readable form while the system is running and unlocked with the corresponding key.
 
 Disk encryption methods aim to provide three distinct properties:
 \begin{enumerate}
@@ -65,46 +65,31 @@ Disk encryption methods aim to provide three distinct properties:
 \item The overhead introduced by the encryption method should not be kept to a minimum (i.e., the amount of storage used for encrypted data should not be significantly larger than the size of plaintext)
 \end{enumerate}
 
-Disk encryption can prevent unauthorized viewing of the data when the computer or hard-disk is:
+Disk encryption can prevent unauthorized reading of the data when the disk is
+\cite{disk-enc}:
 \begin{itemize}
-\item located in a place to which non-trusted people might gain access while you are away
-\item lost or stolen, as with laptops, netbooks or external storage devices
+\item in a place where unauthorized people might gain access while unsupervised
+\item lost or stolen
 \item in the repair shop
 \item discarded after its end-of-life
 \end{itemize}
 
-The system will still be vulnerable to:
+The system will still be vulnerable to
+\cite{disk-enc}:
 \begin{itemize}
-\item Attackers who can break into the system (e.g. over the Internet) while it is running and after the encrypted parts of the disk have already been unlocked and mounted.
-\item Attackers who are able to gain physical access to the computer while it is running (even if you use a screenlocker), or very shortly after it was running, if they have the resources to perform a cold boot attack.
-\item A government entity which may obtain your keys/passphrases using various techniques of coercion. It may be legal for law enforcement agencies to do so if they have suspicions that you might be hiding something of interest.
+\item Attackers who can break into the system while it is running and after the encrypted parts of the disk have already been unlocked and mounted.
+\item Attackers who are able to gain physical access to the computer while it is running or very shortly after it was running.
+\item A government entity which may obtain your keys/passphrases using various techniques of coercion.
 \end{itemize}
-\cite{disk-enc}
 
 \subsection{Data Encryption vs System Encryption}
 \label{sub-sec:de-vs-se}
 
-\textbf{Data encryption} is defined as encrypting only the user's data itself (often located within the /home directory). While it is the simplest and least intrusive use of disk encryption, it has some significant drawbacks.
-In modern computing systems, there are many background processes that may cache/store information about user data or parts of the data itself in non-encrypted areas of the hard drive, like:
-\begin{itemize}
-\item swap partitions
-\item temporary files created by user applications
-\item log files and databases
-\end{itemize}
+\textbf{Data encryption} is defined as encrypting only the user's data itself (usually stored in the \texttt{/home} directory). While it is the simplest and least intrusive use of disk encryption, it has some significant drawbacks. The main problem is that data may be accessible trough the swap partition or temporary files created by some processes, both of which are not encrypted.
 
+\textbf{System encryption} is the encryption of the operating system and user data, which helps to address some of the inadequacies of data encryption. It prevents unauthorized physical access to data, regardless of where inside the system it is stored. However, decryption must take place at boot time, in order for the system to be able to start.
 
-\textbf{System encryption} is the encryption of the operating system and user data, which helps to address some of the inadequacies of data encryption.
-
-Benefits:
-\begin{itemize}
-\item prevents unauthorized physical access to operating system files
-\item prevents unauthorized physical access to private data that may be cached by the system
-\end{itemize}
-Disadvantages:
-\begin{itemize}
-\item unlocking of the encrypted parts of the disk can no longer happen during or after user login; it must now happen at boot time
-\end{itemize}
-In practice, there is not always a clear line between data encryption and system encryption.
+"In practice, there is not always a clear line between data encryption and system encryption\cite{disk-enc}."
 
 Finally, it is important that disk encryption be viewed as an adjunct to the existing security mechanisms of the operating system, while relying on other parts of the system to provide things like network security and user-based access control.
 
@@ -113,78 +98,34 @@ Finally, it is important that disk encryption be viewed as an adjunct to the exi
 
 The two approaches to disk encryption are block-based and file-based. Block encryption means that the actual encryption process happens when the filesystem writes a block of data on the disk. Its advantages are simplicity and transparency. However, the method lacks granularity, i.e., treating each file differently. This is the type of encryption used in Android 3.0 and later.
 
-A more in detail comparison of block-based encryption and file-based encryption is presented in the following table.\footnote{\url{http://ksouedu.com/doc/ecryptfs-utils/ecryptfs-faq.html\#compare}}
-
-\renewcommand{\arraystretch}{1.8}
-\begin{center}
-\begin{table}[tp]
-	\begin{tabularx}{\textwidth}{|| m{0.46\textwidth} || m{0.46\textwidth} ||}
-		\hhline{|t:=:t:=:t|}
-		\multicolumn{1}{||c||}{\textbf{Block Device Encryption}} & 
-			\multicolumn{1}{c||}{\textbf{Stacked Filesystem Encryption}} \\ 
-		\hhline{|:=::=:|}
-		Simple in concept and implementation; just transform blocks as they pass through. & High level of design complexity; meticulous handling of internal filesystem primitives required. \\
-		\hhline{|:=::=:|}
-		Must allocate a block device to dedicate for the entire filesystem. & Stacks on top of existing mounted filesystems; requires no special on-disk storage allocation effort. \\
-		\hhline{|:=::=:|}
-		Everything in the filesystem incurs the cost of encryption and decryption, regardless of the confidentiality requirements for the data. & Selective encryption of the contents of only the sensitive files. \\
-		\hhline{|:=::=:|}
-		Fully protects the confidentiality of the directory structures, superblocks, file sizes, file permissions, and so forth. & Cannot keep all filesystem metadata confidential. Since stacked filesystems encrypt on a per-file basis, attackers will know the approximate file sizes, for instance. \\
-		\hhline{|:=::=:|}
-		Coarse granularity; only fixed per-mountpoint encryption policies are possible. & Fine granularity; flexible per-file encryption policies are possible. \\
-		\hhline{|:=::=:|}		
-		No notion of ``encrypted files.'' Individual files must be re-encrypted via a userspace application before written to backups, sent via email, etc. & Individual encrypted files can be accessed transparently by applications; no additional work needed on the part of applications before moving the files to another location. \\
-		\hhline{|:=::=:|}
-		Clients cannot use directly on networked filesystems; encryption must be set up and managed on the server, or the client must encase all of his files in a loopback mount, losing the per-file granularity from the perspective of other clients. & Clients can stack on locally mounted networked filesystems; individual files are sent to the server and stored in encrypted form. \\
-		\hhline{|:=::=:|}
-		Can protect databases that use their own dedicated block device. & Can only protect databases that write their tables to regular files in an existing filesystem. \\
-		\hhline{|:=::=:|}
-		Used to protect swap space. & Not designed to protect swap space; we recommend using block device encryption to protect swap space while using eCryptfs on the filesystem. \\
-		\hhline{|:=::=:|}
-		Possible to hide the fact that the partition is encrypted. & The fact that encrypted data exists on the device is obvious to an observer. \\
-		\hhline{|:=::=:|}
-		Filesystem-agnostic; any filesystem will work on an encrypted block device. & Can only be expected to work with existing filesystems that are upstream in the official Linux kernel. \\
-		\hhline{|b:=:b:=:b|}
-	\end{tabularx}
-	\caption{Block Device Encryption vs Stacked Filesystem Encryption}
-\end{table}
-\end{center}
-\newpage
+A more detailed comparison of block-based encryption and file-based encryption is presented in the table in the eCryptfs frequently asked questions section\footnote{\url{http://ksouedu.com/doc/ecryptfs-utils/ecryptfs-faq.html\#compare}}.
 
 \section{eCryptfs}
 \label{sec:de-ecryptfs}
 
 As mentioned before, eCryptfs is a stacked file system which manages data encryption. Now, details about it and the advantages and disadvantages is brings will be presented.
 
-Originally authored by Michael Halcrow and the IBM Linux Technology Center, eCryptfs is derived from Erez Zadok's Cryptfs, and the FiST framework for stacked filesystems. eCryptfs extended Cryptfs to provide advanced key management and policy features.\cite{ecryptfs-paper}
+Originally authored by Michael Halcrow and the IBM Linux Technology Center, eCryptfs is derived from Erez Zadok's Cryptfs, and the FiST framework for stacked filesystems. eCryptfs extended Cryptfs to provide advanced key management and policy features\cite{ecryptfs-paper}.
 
 It has already been mentioned that eCryptfs uses a randomly generated File Encyption Key(FEK) for each file and that this key is also encrypted. Also noteworthy is that the FEK in its encrypted form is actually stored together with the encrypted file. This adds the posibility of transfering a file while encrypted with the ability to gain access with the proper credentials.
 
 \subsection{Architecture}
 \label{sub-sec:arch-ecryptfs}
 
-eCryptfs is implemented as a kernel module augmented with various userspace utilities for performing key management functions.
+eCryptfs is implemented mainly as a kernel module. It uses a number of userspace utilities for performing key management functions.
 
 \fig[scale=0.24]{src/img/ecryptfs/arch.png}{img:ecryptfs-arch}{eCryptfs Architecture\cite{ecryptfs-paper}}
 
-The kernel module encrypts the file contents using the kernel cryptographic API. A keystore component extracts the header information from individual files and forwards this data to a callout application. In turn, this application evaluates the header information against the target policy and performs various operations, e.g. prompting the user for a passphrase.
+The kernel module encrypts the file contents using the kernel cryptographic API. A keystore component extracts the header information from individual files while a callout application evaluates the header information against the target policy and performs the corresponding operations.
 
 Key management is done in userspace for two main reasons. The first is to reduce the complexity of the code running in kernelspace. The second is due to the fact that management operation are only required when opening/closing a file. Since these operations are relatively infrequent, the overhead does not constitute an issue.
-
-Below is the flow of an open operation on a system using ecryptfs.
-
-\begin{figure}[h!]
-\centering
-    \includegraphics[width=0.9\textwidth]{src/img/ecryptfs/newfile.png}
-\caption{eCryptfs Open File Process\cite{ecryptfs-paper}}
-\end{figure}
 
 \subsection{Cryptographic Operations}
 \label{sub-sec:crypt-ops-ecryptfs}
 
-Most of the data encryption is done in the kernel module, and hence eCryptfs makes use of the kernel cryptographic API to perform the encryption and the decryption operations. One of the primary motivators in implementing eCryptfs in the kernel is to avoid the overhead of context switches between userspace and kernel space, which is frequent when dealing with pages in file I/O. Any symmetric ciphers supported by the Linux kernel can be used as the bulk data ciphers for the eCryptfs files.
+Most of the data encryption is done in the kernel module, and hence eCryptfs makes use of the kernel cryptographic API to perform the encryption and the decryption operations. One of the primary motivators in implementing eCryptfs in the kernel is to avoid the overhead of context switches between userspace and kernel space, which is frequent when dealing with pages in file I/O.
 
-The underlying file format for eCryptfs is based on the OpenPGP format described in RFC2440\footnote{\url{ftp://ftp.rfc-editor.org/in-notes/rfc2440.txt}}
+The underlying file format for eCryptfs is based on the OpenPGP format described in RFC2440\cite{rfc}.
 
 \begin{figure}[h!]
 \centering
@@ -194,9 +135,9 @@ The underlying file format for eCryptfs is based on the OpenPGP format described
 
 An aspect where eCryptfs deviates from the standard is the introduction of \textit{data extents}. This is done in order to accommodate random access while maintaining performance. The OpenPGP standard assumes that the encryption and decryption is done as an atomic operation over the entire data contents of the file; there is no concept of a partially encrypted or decrypted file. The data is encrypted using what is known as a chained block cipher(CBC\abbrev{CBC}{Chained Block Cipher}). This means that each block of plaintext, with the exception of the first, is combined with the previous block ciphertext through a XOR operation before being encrpyted. Evidently, the same process must be followed when decrypting. Thus, reading a byte from a file requires decrypting all leading bytes. Conversely, writing a byte incurs encrypting all trailing bytes from that file. For large files, reading a byte towards the end of the file or writing a byte at the beginning of it would be inefficient.
 
-Using extents, each part of a file is encrypted separately; reading or writing a byte requires operations only on the extent containing the respective byte. The extents span the page size (as specified for each kernel build). An extent containing initialization vectors(IV\abbrev{IV}{Initialization Vector}) precedes a group of extents which used the respective IV's (each extent has an unique IV). These initialization vectors are used to XOR the first block of data when encrypting/decrypting.
+Using extents, each part of a file is encrypted separately; reading or writing a byte requires operations only on the extent containing the respective byte. An extent containing initialization vectors(IV\abbrev{IV}{Initialization Vector}) precedes a group of extents which used the respective IV's (each extent has an unique IV). These initialization vectors are used to XOR the first block of data when encrypting/decrypting.
 
-Another challenge is treating \textit{sparse files}. According to UNIX semantics, a file becomes sparse when an application seeks past the end of it. These results in regions where no data is written, also known as \textit{holes}. The file system normally uses special markers for these regions and sets the filesize in accordance. Thus, less space on the disk is used to store the file. When reading from these regions, the file system simply fills in with zero's.
+Another challenge is treating \textit{sparse files}. A sparse file is a file that contains regions where no data is written, also known as \textit{holes}. The file system normally uses special markers for these regions and sets the filesize in accordance. Thus, less space on the disk is used to store the file. When reading from these regions, the file system simply fills in with zero's.
 
 Although eCryptfs could use markers, e.g. IV's consisting of all zero's, to implement a similar behaviour, this may constitute a breach in security, since it becomes readily apparent to a potential attacker which regions are sparse.
 Therefore, eCryptfs prefers to relegate how to treat sparse files to something policy decides.
@@ -206,17 +147,16 @@ Therefore, eCryptfs prefers to relegate how to treat sparse files to something p
 
 eCryptfs aims to operate transparently. The fact that files are encrypted should not be a concern to the user.
 
-Every file receives a randomly generated session key, which is used in the bulk data encryption of the file contents. This session key is stored in the cryptographic metadata for the file, which is in turn cached in the user’s session keyring. When an application closes a newly created file, eCryptfs encrypts the session key once for each authentication token associated with that file, as dictated by policy, then writes these encrypted session keys into packets in the header of the underlying file.
-When an application later opens the file, eCryptfs reads in the encrypted session keys and chains them off of the cryptographic metadata for the file. eCryptfs looks through the user’s authentication tokens to attempt to find a match with the encrypted session keys; it uses the first one found to decrypt the session key. In the event that no authentication tokens in the user’s session keyring can decrypt any of the encrypted session key packets, eCryptfs falls back on policy. This policy can dictate actions such as querying PKI modules for the existence of private keys or prompting the user for a passphrase.
+Every file is encrypted with a randomly generated session key. This session key is stored in the cryptographic metadata for the file. When a newly created file is closed, the session key is encrypted once for each authentication token associated with the file and then written in the file header. When the file is opened, the encrypted keys are read from the header and an authentication token corresponding to the file. If not found, an action in accordance with the active policy is taken.
 
-Passphrase authentication tokens in eCryptfs exist in three forms: non-passphrased, saltless, and salted. In order to address the threat of passphrase dictionary attacks, eCryptfs utilizes the method whereby a salt value is concatenated with a passphrase to generate a passphrase identifier. The concatenated value is iteratively hashed (65,537 times by default) to generate the identifying signature for the salted authentication token.\cite{ecryptfs-paper}
+"Passphrase authentication tokens in eCryptfs exist in three forms: non-passphrased, saltless, and salted. In order to address the threat of passphrase dictionary attacks, eCryptfs utilizes the method whereby a salt value is concatenated with a passphrase to generate a passphrase identifier. The concatenated value is iteratively hashed (65,537 times by default) to generate the identifying signature for the salted authentication token\cite{ecryptfs-paper}."
 
-The key callout application is the primary contact between the eCryptfs kernel module and the userspace key management code. This callout application parses policy information from the target, which it interprets in relation to the header information in each file. It may then make calls through the PKI API in order to satisfy pending public key requests, or it may go searching for a salted passphrase with a particular signature. The eCryptfs daemon listens to a socket and whenever policy calls for the user to be prompted for a passphrase, the callout application can retrieve the socket’s location and use it to request the daemon to prompt the user; the daemon then returns the user’s passphrase to the callout application.
+The key callout application is the primary contact between the eCryptfs kernel module and the userspace key management code. Depending on the policy and the file in question, it may make calls through the PKI API or it may go searching for a salted passphrase with a particular signature. The eCryptfs daemon listens to a socket and whenever policy calls for the user to be prompted for a passphrase, the callout application can use the socket to request the daemon to prompt the user and then get the result back.
 
 \subsection{Encrypting a Directory Using eCryptfs}
 \label{sub-sec:encrypt-dir-ecryptfs}
 
-This is an example of how to encrypt a user directory. It relies on the \textit{ecryptfs-utils} package being installed. Although the operations can be performed manually, for the purpose of this example there is no need to go into such amount of detail. More details on the Arch Linux page on eCryptfs.\cite{ecryptfs}
+This is an example of how to encrypt a user directory. It relies on the \textit{ecryptfs-utils} package being installed. Although the operations can be performed manually, for the purpose of this example there is no need to go into such amount of detail. More details on the Arch Linux page on eCryptfs\cite{ecryptfs}.
 
 The name \texttt{secret} will be used for the created directory.
 

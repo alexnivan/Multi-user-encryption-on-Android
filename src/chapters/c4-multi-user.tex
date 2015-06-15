@@ -76,17 +76,17 @@ force/.style={rectangle, draw, fill=black!10, inner sep=5pt, text width=3cm, tex
 \label{fig:arch-multi-user}
 \end{figure}
 
-The architecture can be broken down into three main pieces, each containing multiple subsystems.
+The architecture can be broken down into three main pieces, each containing multiple subsystems. It stretches from the kernel layer to the Android framework. The components developed for this project are the EFS Tools, EFS Server and EFS Service.
 
-The first of these is the kernel layer. Here resides the eCryptfs module which has been presented in the previous chapter. Also in this layer is the security chip driver that comes into action on devices with security hardware capabilities (e.g. cryptographic acceleration).
+The first of these is the kernel layer. Here resides the eCryptfs module which has been presented in the previous chapter. It handles the actual encryption of the files. Also in this layer is the security chip driver that comes into action on devices with security hardware capabilities (e.g. cryptographic acceleration). This is used by the OpenSSL library in order to achieve better performance.
 
-The second component is the one where the core of the system is implemented. Called the middleware layer, it hosts the EFS Tools C library, which communicates with the OpenSSL library and the Keystore, as well as the EFS Server. EFS Tools is the C library which makes use of the kernel module to implement the management of storages. The EFS Server is a native Android service which listens on a socket for requests from the upper layer and calls the relevant EFS Tools functions.
+The second component is the one where the core of the system is implemented. Called the middleware layer, it hosts the EFS Tools C library. EFS Tools is the C library which makes use of the kernel module to implement the management of storages. It communicates with the OpenSSL library and the Keystore in order to facilitate key managemet. It also operates with EFS Server, from which it receives storage commands. The EFS Server is a native Android service which listens on a socket for requests from the upper layer and calls the relevant EFS Tools functions. It functions similarly to the \textit{vold} process.
 
-Finally, the thrid component is situated in the Android framework. The most relevant part of it is the EFS Service, which is an Android Java Service that connects various Android subsystems to the native service and underlying C library.
+Finally, the thrid component is situated in the Android framework. The most relevant part of it is the EFS Service, which is an Android Java Service that connects various Android subsystems to the native service and underlying C library. Its functionality presents some similarities to the Mount Service from the Android framework.
 
 Furthermore, in the framework, several Android control systems and user interfaces have been modified in order to integrate the desired functionality.
 
-\section{C library}
+\section{EFS Tools}
 \label{sec:c-multi-user}
 
 The C library is the core component of the design. It is responsible for exposing the operations supported by the eCryptfs kernel module to the upper layers of the system.
@@ -104,9 +104,9 @@ As discussed before, the eCryptfs kernel module encrypts each file with a random
 
 Container management represents the operations of creating and destroying a secure container, as well as unlocking and mounting, unmounting and locking a container. The C library ensures these operations remain transparent to the user.
 
-Here we have the function that unlocks a storage.
+In \labelindexref{Listing}{lst:efs-unlock} there is the function that unlocks a storage.
 
-\begin{lstlisting}[basicstyle=\ttfamily\small, language=C, caption=EFS unlock operation, label=lst:efs-unlock]
+\begin{lstlisting}[language=C, caption=EFS unlock operation, label=lst:efs-unlock]
 int EFS_unlock(char *storage_path, char *passwd)
 {
     char private_dir_path[MAX_PATH_LENGTH];
@@ -162,15 +162,11 @@ int EFS_unlock(char *storage_path, char *passwd)
 
 Integrity means guaranteeing that the data has not been tampered with. For the encrypted data, the eCryptfs module handles the integrity of the files. For the encrypted master key, there is a hash value which is stored with the master key in its encrypted location. If any modifications are made to the encrypted master key, the hash value computed when decrypting the key will not correspond with the one stored.
 
-In order to offer the required functionalities, the EFS Tools library needs to perform operations similar to those described in \labelindexref{Section}{sub-sec:encrypt-dir-ecryptfs}. Note that since the library is meant to run on Android, there is no \textit{ecryptfs-utils} package and there are a number of other tools that would normally be available on a Linux system but are not present. Therefore, some operations (e.g. keyring operations) are done by interacting directly with the kernel through system calls, while other operations (e.g copying a file) are executed directly in code.
-
-For example, the following flow describes the operations that take place upon creation of a secure storage. Similar to the example in the previous chapter, the encrypted data for a given \texttt{path/folder} is stored in \texttt{path/.folder}.
-
 \tikzstyle{block} = [rectangle, draw, fill=blue!20, 
     text width=7cm, text centered, rounded corners, minimum height=1cm]
 \tikzstyle{line} = [draw, -latex']
 
-\begin{figure}[!h]
+\begin{figure}[h!]
 \centering 
 \begin{tikzpicture}[node distance = 2cm, auto]
     % Place nodes
@@ -195,6 +191,10 @@ For example, the following flow describes the operations that take place upon cr
 \label{fig:create-storage-multi-user}
 \end{figure}
 
+In order to offer the required functionalities, the EFS Tools library needs to perform operations similar to those described in \labelindexref{Section}{sub-sec:encrypt-dir-ecryptfs}. Note that since the library is meant to run on Android, it has to account for the lack of the \textit{ecryptfs-utils} package and a number of other tools that would normally be available on a Linux system. Therefore, some operations (e.g. keyring operations) are done by interacting directly with the kernel through system calls, while other operations (e.g copying a file) are executed directly in code.
+
+For example, the flow in \labelindexref{Figure}{fig:create-storage-multi-user} describes the operations that take place upon creation of a secure storage. Similar to the example in the previous chapter, the encrypted data for a given \texttt{path/folder} is stored in \texttt{path/.folder}.
+
 Aside from the library which is used by the native service, there is also a command-line tool which can be used to manage storages. 
 
 \begin{lstlisting}[numbers=none, basicstyle=\footnotesize, caption=efs-tools binary, label=lst:efs-tools]
@@ -216,13 +216,13 @@ restore
 	->efs-tools storage restore <path> <password>
 \end{lstlisting}
 
-\section{Native Service}
+\section{EFS Server}
 \label{sec:native-service-multi-user}
 
 The native service is the communication medium between the C library presented in the previous section and the upper layers of the system. Its main function is to handle requests made by the Java EFS Service, situated in the Android Framework. However, other system entities can make requests.
 
 In order to make a native service in Android, one must add the relevant code in the init script.
-For the \texttt{efsserver} native service, the init entry is as follows.
+For the \texttt{efsserver} native service, the init entry is presented in \labelindexref{Listing}{lst:efsserver-init}.
 
 \begin{lstlisting}[numbers=none, caption=efsserver init entry, label=lst:efsserver-init]
 service efs-server /system/bin/efs-server
@@ -231,12 +231,11 @@ service efs-server /system/bin/efs-server
 \end{lstlisting}
 
 The first line defines the service named efs-server and specifies the location of the executable.
-The second line specifies the service class. This is less relevant at the moment. Finally, the last line specifies that the service requires a socket and also the name, type, access rights, owner and group. At startup, init creates a socket with the desired options in \texttt{/dev/sockets/efs-server} and executes \texttt{/system/bin/efs-server}.
+The second line specifies the service class. Finally, the last line specifies that the service requires a socket and also the name, type, access rights, owner and group. At startup, init creates a socket with the desired options in \texttt{/dev/sockets/efs-server} and executes \texttt{/system/bin/efs-server}.
 
 What efs-server does, exactly, is to listen for commands sent to the above socket. It is written in C++ and uses classes derived from the \texttt{FrameworkListener} and \texttt{FrameworkCommand} classes present in Android. These are specialized classes which handle communication through the socket.
 
 \texttt{FrameworkListener} supports registering multiple \texttt{FrameworkCommand} objects. For every request received, it iterates over the list of known commands, searching for one matching the request. If the command is found, the appropriate function is called. Otherwise, an error code is returned to the requester.
-\newpage
 
 \begin{lstlisting}[language=C++, caption=Command Listener Initialization, label=lst:cmd-init]
 CommandListener::CommandListener() :
@@ -249,36 +248,35 @@ CommandListener::EncryptedFileStorageCmd::EncryptedFileStorageCmd():
 }
 \end{lstlisting}
 
-Note that in the above, the use of \texttt{efs-server} string in both the \texttt{FrameworkListener} and the \texttt{FrameworkCommand} constructor is purely coincidental. The first represents the name of the socket the Listener should use, while the second is the name the of the command.
+Note that in the above, the use of \texttt{efs-server} string in both the \texttt{FrameworkListener} and the \texttt{FrameworkCommand} constructor is purely coincidental. The first represents the name of the socket the Listener should use, while the second is the name of the command.
 
 \section{Android Framework}
 \label{sec:android-frmwrk-multi-user}
 
 The parts of the system which have been discussed up to this point revolve around the notion of secure storage and managing multiple such containers. The Android's Java Framework is where the changes that enable multi-user encryption and integrate it into the user interface have been made.
 
-\subsection{System Service}
+\subsection{EFS Service}
 \label{sub-sec:system-service-multi-user}
 
 The first step is to create a System Service. This service is the connection between the native service and the rest of the framework. The mechanism through which this connection is achieved is an Android-specific IPC(Interprocess Communication\abbrev{IPC}{Interprocess Communication}) called a \texttt{Binder}.
 
-%http://rts.lab.asu.edu/web_438/project_final/CSE_598_Android_Architecture_Binder.pdf
 A \texttt{Binder} is defined as a low overhead Remote Procedure call utility which facilitates synchronous reliable communication across processes. It is an elaborate framework and a binder kernel driver resides at the heart of this framework.
 
-Although android supports all of the traditional IPC mechanisms supported by the Linux kernel, these mechanisms are not used by OS libraries and platform API's to perform IPC. The preferred method is through a framework which spans over the Linux kernel layer, the middleware and the application layer called \texttt{Binder framework}.
+Although Android supports all of the traditional IPC mechanisms supported by the Linux kernel, these mechanisms are not used by OS libraries and platform API's to perform IPC. The preferred method is through a framework which spans over the Linux kernel layer, the middleware and the application layer called \texttt{Binder framework}.
 
-Applications access the binder’s functionality through the Binder interface exposed at the Java API layer. The Java implementation of the Binder interface in turn access the Binder interface implemented at the middleware layer. The middleware is exposed to the Java layer through JNI\abbrev{JNI}{Java Native Interface} wrappers. The middle ware layer is actually responsible for performing marshalling and unmarshalling of objects and communicating with the Binder kernel driver using a low level communication protocol.
+Applications access the Binder’s functionality through the Binder interface exposed at the Java API layer. The Java implementation of the Binder interface in turn access the Binder interface implemented at the middleware layer. The middleware is exposed to the Java layer through JNI\abbrev{JNI}{Java Native Interface} wrappers. The middleware layer is actually responsible for performing marshalling and unmarshalling of objects and communicating with the Binder kernel driver using a low level communication protocol.
 
-The EFS Service used to expose the storage operations uses, like every other Android system service, the Binder mechanism in order to provide access to the calling component. The difference from the figure below is that the caller is not necessarily an Activity, as it can also be another Service.
+The EFS Service used to expose the storage operations uses, like every other Android system service, the Binder mechanism in order to provide access to the calling component. The difference from \labelindexref{Figure}{fig:bind-arch-multi-user} is that the caller is not necessarily an Activity, as it can also be another Service.
 
 \begin{figure}[h!]
 \centering
-    \includegraphics[width=0.9\textwidth]{src/img/binder/binderarch.png}
+    \includegraphics[width=0.9\textwidth]{src/img/binder/binderarch.pdf}
 \caption{Binder Framework Architecture\cite{binder}}
+\label{fig:bind-arch-multi-user}
 \end{figure}
 
-An example of a call to the service is provided to showcase how the argument marshalling and binder transaction are done in code.
+An example of a call to the service is provided in \labelindexref{Listing}{lst:lock-user-data-multi-user} to showcase how the argument marshalling and Binder transaction are done in code.
 
-\begin{minipage}{\linewidth}
 \begin{lstlisting}[language=Java, caption=lockUserData service method, label=lst:lock-user-data-multi-user]
 /**
  * Lock user data
@@ -301,14 +299,13 @@ public int lockUserData(int userId)
 	return _result;
 }
 \end{lstlisting}
-\end{minipage}
 
 \subsection{User Management and Interface}
 \label{sub-sec:user-mngmt-inter-multi-user}
 
 The second step is to make the relevant modifications in the framework in order to manage multiple encrypted users. Also, some changes to various Activities in the Settings Application need to be made.
 
-The way multi-user Android systems work is that there is a separate data directory for each user and a separate media directory per user. This projects encrypts data directory, but it can be extended to the media directory as well.
+The way multi-user Android systems work is that there is a separate data directory for each user and a separate media directory per user. This project encrypts data directory, but it can be extended to the media directory as well.
 
 The users are represented internally by integers. The default user(the owner) is user 0. Users created by the owner are identified by consecutive integers beginning with 10, with a limit of 8 users. Each user has a data folder in \texttt{/data/user/id}, where \text{id} is the integer representing that user.
 
@@ -323,12 +320,61 @@ drwxrwx--x system   system            2000-03-11 17:37 11
 
 An exception to this rule is the owner for which the data is stored in \texttt{/data/data} and \texttt{/data/user/0} is a link to this directory. This is mainly due to backwards compatibility requirements. For simplicity reasons, the project only handles encryption of  secondary users(those created by the owner).
 
-To begin, the \texttt{UserInfo} class requires the addition of a flag that marks whether the user in question is encrypted.
-\begin{lstlisting}[language=Java, numbers=none, caption=Encrypted User Flag, label=lst:encr-flag-multi-user]
+To begin, the \texttt{UserInfo} class requires the addition of a flag that marks whether the user's data is encrypted.
+
+\lstdefinestyle{custom1}{
+	language=Java,
+	basicstyle=\ttfamily,
+	moredelim=**[is][\color{green!65!black}]{@}{@},
+}
+
+\begin{lstlisting}[style=custom1, caption=Encrypted User Flag, label=lst:encr-flag-multi-user]
+/**
+ * Primary user. Only one user can have this flag set. 
+ * Meaning of this flag TBD.
+ */
+public static final int FLAG_PRIMARY = 0x00000001;
+
+/**
+ * User with administrative privileges. Such a user can create and
+ * delete users.
+ */
+public static final int FLAG_ADMIN   = 0x00000002;
+
+/**
+ * Indicates a guest user that may be transient.
+ */
+public static final int FLAG_GUEST   = 0x00000004;
+
+/**
+ * Indicates the user has restrictions in privileges, 
+ * in addition to those for normal users.
+ * Exact meaning TBD. For instance, maybe they can't
+ * install apps or administer WiFi access pts.
+ */
+public static final int FLAG_RESTRICTED = 0x00000008;
+
+/**
+ * Indicates that this user has gone through its first-time
+ * initialization.
+ */
+public static final int FLAG_INITIALIZED = 0x00000010;
+
+/**
+ * Indicates that this user is a profile of another user, 
+ * for example holding a users corporate data.
+ */
+public static final int FLAG_MANAGED_PROFILE = 0x00000020;
+
+/**
+ * Indicates that this user is disabled.
+ */
+public static final int FLAG_DISABLED = 0x00000040;
+@
 /**
  * Encrypted
  */
-public static final int FLAG_ENCRYPTED = 0x00000080;
+public static final int FLAG_ENCRYPTED = 0x00000080;@
 \end{lstlisting}
 The class constructor takes, among others, a \texttt{flags} parameter, which is an integer containing a bitwise or between several flags. The method for determining if a given user is encrypted using this parameter is the following.
 \begin{lstlisting}[language=Java, numbers=none, caption=isEncrypted method, label=lst:encr-method-multi-user]
@@ -341,7 +387,7 @@ Upon creation, the user is prompted with a dialog which asks whether the newly c
 
 \begin{figure}[h!]
 \centering
-    \includegraphics[width=0.9\textwidth]{src/img/multi-user/newuser.png}
+    \includegraphics[width=0.7\textwidth]{src/img/multi-user/newuser.png}
 \caption{User Creation}
 \end{figure}
 
@@ -349,13 +395,13 @@ As mentioned in \labelindexref{Section}{sec:c-multi-user}, the user needs to pro
 
 Only one user may be active at any given time. When switching users, it is necessary to check whether the current user is encrypted. If this is the case, the user data directory needs to be locked. An example of doing this is presented below. This code is from the \texttt{UserSwitcherController} class. Highlighted in green are the additions made to the already existent code.
 
-\lstdefinestyle{custom}{
+\lstdefinestyle{custom2}{
 	language=Java,
 	basicstyle=\ttfamily\small,
 	moredelim=**[is][\color{green!65!black}]{@}{@},
 }
 
-\begin{lstlisting}[style=custom]
+\begin{lstlisting}[style=custom2]
 private void switchToUserId(int id) {@
 	final IBinder binder = ServiceManager.getService("efsservice");
 	final int currentUser = ActivityManager.getCurrentUser();
@@ -388,10 +434,10 @@ This chapter covers some of the issues encountered during the development of thi
 \subsection{SELinux}
 \label{sub-sec:selinux-multi-user}
 
-%http://selinuxproject.org/page/NB_Overview
 The first of the issues is related to SELinux. SELinux is the primary Mandatory Access Control (MAC) mechanism built into a number of GNU/Linux distributions. SELinux operates using policies that define what access to resources and which operations on these resources are allowed. It is able to confine an application to its own domain, offering the minimum permissions required. It also assures that actions which are not allowed by policy are stopped, in order to attempt to prevent any damage.
 
-To check wheter SELinux is running, the following command can be executed.
+To check wheter SELinux is running, the command in \labelindexref{Listing}{lst:selinux-multi-user} can be executed.
+
 \begin{lstlisting}[numbers=none, caption=Checking SELinux status, label=lst:selinux-multi-user]
 # getenforce
 Enforcing
@@ -420,7 +466,7 @@ One issue was already mentioned: the fact that encryption of the owner is not pe
 \begin{itemize}
 \item the encryption for the secondary users is done at creation, with no processes accessing the data directory; for the owner, the framework would need to be stopped
 \item switching to the primary user would require the framework to be stopped, since user 0 cannot be stopped without doing so
-\item the same as above applies for unlocking the device after it has been in sleep and the storage containing the data dir has been locked
+\item the same as above applies for unlocking the device after it has been in sleep and the storage containing the data directory has been locked
 \end{itemize}
 
 Another shortcoming is the fact that encrypted users only work with PIN used for locking. Passwords are easy to integrate, since they would only require similar changes to those done for PIN codes. Patterns are also not an issue, since they are converted to a string internally, a string which can be used in place of a password for the storage. The only real issue is with more complex locking methods, like facial recognition.
@@ -505,7 +551,7 @@ Once the kernel has been built, the emulator can be started as follows:
 \begin{lstlisting}[numbers=none]
  emulator -kernel $AOSP_TREE/goldfish-kernel/arch/x86/boot/bzImage -skin WXGA800-7in -prop fw.max_users=8 -prop fw.show_multiuserui=1 -qemu -m 1024 -enable-kvm
 \end{lstlisting}
-It will start a 7 inch emulator with multi-user support. See all emulator options on the developer wiki.\footnote{\url{http://developer.android.com/tools/help/emulator.html}}
+It will start a 7 inch emulator with multi-user support. See all emulator options on the developer wiki\footnote{\url{http://developer.android.com/tools/help/emulator.html}}.
 
 To check that the C library is functional, the test suite included in the source code repository can be used.
 \begin{lstlisting}[numbers=none]
@@ -514,7 +560,7 @@ $AOSP_TREE/external/efs-tools/test/testsuite.sh
 
 Testing multi-user encryption is not automated at this point. However, \texttt{adb shell} can be used to connect to the device. Once connected, to check whether a storage is mounted or not, the \texttt{mount} command is used.
 
-\begin{lstlisting}[numbers=none, style=custom]
+\begin{lstlisting}[numbers=none, style=custom2]
 # mount
 rootfs / rootfs ro,seclabel,relatime 0 0
 tmpfs /dev tmpfs rw,seclabel,nosuid,relatime,mode=755 0 0
