@@ -1,6 +1,24 @@
-\chapter{Conclusion}
-\label{chapter:conclusion}
+\chapter{Conclusion and Future Development}
+\label{chapter:conclusion-devel}
 
-\textbf{This is just a demo file. It should not be used as a sample for a thesis.}\\
-\todo{Remove this line (this is a TODO)}
+This chapter will both summarize the development and current state of the project and discuss future plans for the solution.
 
+\section{Conclusion}
+\label{sec:conclusion}
+
+Multi-user systems are relatively new in the Android environment and many modifications to their architecture and functionality may appear in the future.
+
+This project achieved its goal of providing a proof of concept for separately encrypting multiple users in Android systems is possible. The basic functionalities have been implemented. Users can choose whether to encrypt their data. If they choose to do so, the data will only be accessible while the device is unlocked and the respective user is active. There are some shortcomings to the implementation, but various mechanisms can be used to minimise the effects.
+
+From a performance point of view, the differences are not visible to the end user in common usage scenarios. If applications which heavily use the disk are constantly run on the device, the performance penalty caused by the stacked filesystem could affect user experience.
+
+The parts of the project that can be used with any Android system are EFS Tools, EFS Server and EFS Service. The integration of these as well as user interface can be handled by each telephone vendor or developer as they see fit.
+
+\section{Future Development}
+\label{sec:future-devel}
+
+At the end of 2014, some time after the project presented in this thesis had been started, the code for Android 5.0 was pushed to the AOSP tree. One major change which this version brought was that devices were now encrypted by default and cannot be returned to an unencrypted state\cite{andr-enc}. This means that devices running this version or any subsequent version can only use the multi-user encryption feature implemented as described in this thesis by applying stacked filesystem encryption on top of block encryption. This would incur an added performance loss. Also, simply shutting down the device would prohibit access to all user data. Therefore, the solution loses its feasibility.
+
+The three components mentioned in the previous section (EFS Tools, EFS Server and EFS Service) can still be used to manage secure storages. One example of use would be encrypting user data on an external storage card. Protecting data on the card using this method also provides the possibility of moving the card between different devices and accessing the storage from any device that has the above components integrated.
+
+Because of the introduction of default encryption in Android 5.0, it is unlikely the feature will be accepted in the AOSP source tree. However, further development of the multi-user encryption feature can still be done, for research purposes.
