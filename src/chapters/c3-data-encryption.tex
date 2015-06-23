@@ -6,7 +6,7 @@ This chapter explains more detailed the concept of encryption and presents the h
 \section{Encryption explained}
 \label{sec:enc-explained}
 
-Encryption is a mathematical transformation takes data requiring protection (plaintext) as input and outputs it into a form not easily understood by unauthorized entities (ciphertext). The ciphertext does not reveal anything about the content of the original data.
+Encryption is a mathematical transformation takes data requiring protection (plaintext) as input and outputs it into a form not easily understood by unauthorized entities (ciphertext). The ciphertext does not reveal anything about the the original data and its contents.
 
 Encryption can be reversed. This inverse transformation is referred to as decryption. "An encryption process has a corresponding decryption process, which is used to reverse the encrypted data (ciphertext) back to its original content (plaintext)\cite{enc-basics}."
 
@@ -28,7 +28,7 @@ Both the encryption and decryption process use a cryptographic key which is a st
 \end{minipage}
 \end{figure}
 
-In the case of disk encryption, each blockdevice or individual file (depending on encryption type) is split into equal chunks called sectors. The operations are then done on a per-sector basis. Therefore, there is a 1 to 1 correspondence between the encrypted sectors and the original data.
+In the case of disk encryption, each blockdevice or individual file (depending on encryption type) is split into equal chunks called sectors. The encryption operations are then done on a per-sector basis. Therefore, there is a 1 to 1 correspondence between the encrypted sectors and the original data.
 
 Whenever a fragment of data from the blockdevice/file is necessary, the whole sector (or sectors) that contains the data will be read from disk, decrypted and temporarily stored in memory.
 
@@ -85,13 +85,13 @@ The system will still be vulnerable to
 \subsection{Data Encryption vs System Encryption}
 \label{sub-sec:de-vs-se}
 
-\textbf{Data encryption} is defined as encrypting only the user's data itself (usually stored in the \texttt{/home} directory). While it is the simplest and least intrusive use of disk encryption, it has some significant drawbacks. The main problem is that data may be accessible trough the swap partition or temporary files created by some processes, both of which are not encrypted.
+\textbf{Data encryption} is defined as encrypting only the user's data itself (usually stored in the \texttt{/home} directory). While it is the simplest and least intrusive type of disk encryption, it has some significant drawbacks. The main problem is that data may be accessible trough the swap partition or temporary files created by some processes, both of which are not encrypted.
 
 \textbf{System encryption} is the encryption of the operating system and user data, which helps to address some of the inadequacies of data encryption. It prevents unauthorized physical access to data, regardless of where inside the system it is stored. However, decryption must take place at boot time, in order for the system to be able to start.
 
 "In practice, there is not always a clear line between data encryption and system encryption\cite{disk-enc}."
 
-Finally, it is important that disk encryption be viewed as an adjunct to the existing security mechanisms of the operating system, while relying on other parts of the system to provide things like network security and user-based access control.
+Finally, it is important that disk encryption be viewed as an addition to the existing security mechanisms of the operating system.
 
 \subsection{Block Encryption vs Stacked File System Encryption}
 \label{sub-sec:be-vs-sfse}
@@ -112,7 +112,7 @@ It has already been mentioned that eCryptfs uses a randomly generated File Encyp
 \subsection{Architecture}
 \label{sub-sec:arch-ecryptfs}
 
-eCryptfs is implemented mainly as a kernel module. It uses a number of userspace utilities for performing key management functions.
+eCryptfs is implemented mainly as a kernel module. It uses a number of userspace utilities to perform key management functions.
 
 \fig[scale=0.24]{src/img/ecryptfs/arch.png}{img:ecryptfs-arch}{eCryptfs Architecture\cite{ecryptfs-paper}}
 
@@ -149,9 +149,9 @@ eCryptfs aims to operate transparently. The fact that files are encrypted should
 
 Every file is encrypted with a randomly generated session key. This session key is stored in the cryptographic metadata for the file. When a newly created file is closed, the session key is encrypted once for each authentication token associated with the file and then written in the file header. When the file is opened, the encrypted keys are read from the header and an authentication token corresponding to the file. If not found, an action in accordance with the active policy is taken.
 
-"Passphrase authentication tokens in eCryptfs exist in three forms: non-passphrased, saltless, and salted. In order to address the threat of passphrase dictionary attacks, eCryptfs utilizes the method whereby a salt value is concatenated with a passphrase to generate a passphrase identifier. The concatenated value is iteratively hashed (65,537 times by default) to generate the identifying signature for the salted authentication token\cite{ecryptfs-paper}."
+"Passphrase authentication tokens in eCryptfs exist in three forms: non-passphrased, saltless, and salted\cite{ecryptfs-paper}." To minimise the vulnerability against a passphrase dictionary attack, a salt value is concatenated with the passphrase and the result is iteratively hashed. The result of the hashing operation constitutes the identifying signature for the authentication token.
 
-The key callout application is the primary contact between the eCryptfs kernel module and the userspace key management code. Depending on the policy and the file in question, it may make calls through the PKI API or it may go searching for a salted passphrase with a particular signature. The eCryptfs daemon listens to a socket and whenever policy calls for the user to be prompted for a passphrase, the callout application can use the socket to request the daemon to prompt the user and then get the result back.
+The key callout application is the primary connection between the eCryptfs kernel module and the userspace key management code. Depending on the policy and the file in question, it may make calls through the PKI API or it may search for a salted passphrase with a particular signature. The eCryptfs daemon listens to a socket and whenever policy requires that the user be prompted for a passphrase, the callout application can use the socket to request the daemon to prompt the user and then get the result back.
 
 \subsection{Encrypting a Directory Using eCryptfs}
 \label{sub-sec:encrypt-dir-ecryptfs}
