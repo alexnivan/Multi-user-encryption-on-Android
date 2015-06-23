@@ -80,7 +80,7 @@ The architecture can be broken down into three main pieces, each containing mult
 
 The first of these is the kernel layer. Here resides the eCryptfs module which has been presented in the previous chapter. It handles the actual encryption of the files. Also in this layer is the security chip driver that comes into action on devices with security hardware capabilities (e.g. cryptographic acceleration). This is used by the OpenSSL library in order to achieve better performance.
 
-The second component is the one where the core of the system is implemented. Called the middleware layer, it hosts the EFS Tools C library. EFS Tools is the C library which makes use of the kernel module to implement the management of storages. It communicates with the OpenSSL library and the Keystore in order to facilitate key managemet. It also operates with EFS Server, from which it receives storage commands. The EFS Server is a native Android service which listens on a socket for requests from the upper layer and calls the relevant EFS Tools functions. It functions similarly to the \textit{vold} process.
+The second component is the one where the core of the system is implemented. Called the middleware layer, it hosts the EFS Tools C library. EFS Tools is the C library which makes use of the kernel module to implement the management of storages. It communicates with the OpenSSL library and the Keystore in order to facilitate key management. It also operates with EFS Server, from which it receives storage commands. The EFS Server is a native Android service which listens on a socket for requests from the upper layer and calls the relevant EFS Tools functions. It functions similarly to the \textit{vold} process.
 
 Finally, the thrid component is situated in the Android framework. The most relevant part of it is the EFS Service, which is an Android Java Service that connects various Android subsystems to the native service and underlying C library. Its functionality presents some similarities to the Mount Service from the Android framework.
 
@@ -424,7 +424,7 @@ The same operation takes place when the device enters sleep mode either by the a
 
 Similarly, when the user enters his password at the lockscreen, the storage corresponding to the data directory of the current user is unlocked.
 
-The result is that, for each encypted user, the data directory is only ever unlocked starting the moment the user introduces the password and ending when the device is either switched to another user or in sleep or turned off.
+The result is that, for each encrypted user, the data directory is only ever unlocked starting the moment the user introduces the password and ending when the device is either switched to another user or in sleep or turned off.
 
 \section{Issues}
 \label{sec:issues-multi-user}
@@ -436,7 +436,7 @@ This chapter covers some of the issues encountered during the development of thi
 
 The first of the issues is related to SELinux. SELinux is the primary Mandatory Access Control (MAC) mechanism built into a number of GNU/Linux distributions. SELinux operates using policies that define what access to resources and which operations on these resources are allowed. It is able to confine an application to its own domain, offering the minimum permissions required. It also assures that actions which are not allowed by policy are stopped, in order to attempt to prevent any damage.
 
-To check wheter SELinux is running, the command in \labelindexref{Listing}{lst:selinux-multi-user} can be executed.
+To check whether SELinux is running, the command in \labelindexref{Listing}{lst:selinux-multi-user} can be executed.
 
 \begin{lstlisting}[numbers=none, caption=Checking SELinux status, label=lst:selinux-multi-user]
 # getenforce

@@ -19,7 +19,7 @@ It was designed and used for NAND flash storage. The primary concern was even di
 \subsection{ext4}
 \label{sub-sec:ext4}
 
-Since 2010, Android devices have switched from YAFFS storage to ext4, which is tipically used in the Linux kernel. The reason was mainly related to performance, as YAFFS did not support multi-threaded operations, while devices started to contain multi-core processors\cite{ext4}.
+Since 2010, Android devices have switched from YAFFS storage to ext4, which is typically used in the Linux kernel. The reason was mainly related to performance, as YAFFS did not support multi-threaded operations, while devices started to contain multi-core processors\cite{ext4}.
 The downside of using ext4 stood in its buffering mechanism. In the event of a system failure, there was the possibility of data loss.
 
 The migration did not affect the higher levels of the software stack due to the abstraction layer provided provided by the Linux kernel, called the virtual file system (or VFS). The VFS\abbrev{VFS}{Virtual File System} interface presented to the system is the same, regardless of the underlying file system used.
@@ -80,7 +80,7 @@ Since the eCryptfs kernel module does not have any supporting user space library
 
 Another example\cite{encfs} uses EncFS, a FUSE-based file-system offering file-system encryption on traditional desktop operating systems. EncFS uses the FUSE library and FUSE kernel module to provide the file-system interface and runs without any special permissions. Similar to eCryptfs, EncFS runs over an existing base file-system, and is responsible only for encryption.
 
-Three major components are required to make EncFS work on any platform: kernel FUSE library support, user space libfuse, and EncFS binaries. To make an encryption file-system work on Android, a modified bootstrapping process and password login was integrated into the operating system framework.
+Three major components are required to make EncFS work on any platform: kernel FUSE library support, userspace libfuse, and EncFS binaries. To make an encryption file-system work on Android, a modified bootstrapping process and password login was integrated into the operating system framework.
 
 Normally, the Android framework loads the user interface by unpacking the applications and other files from \texttt{/system} and \texttt{/data} partitions. In this implementation, the \texttt{/data} partition contains only a skeleton of the required folders which won’t be used by the users for actual data. The authors stored the encrypted data in a separate directory and would mount it over \texttt{/data} partition when the user supplies the password.
 They also modified the Launcher application in Android framework to accept this password, which is the key for the encrypted version of the \texttt{/data} partition. If the password provided by the user is valid, EncFS mounts the encrypted data partition on \texttt{/data} mountpoint using FUSE. If the mount is performed successfully, the Launcher will call a dedicated native program to soft reboot Android Dalvik environment in order to load the actual \texttt{/data} partition.
