@@ -95,6 +95,27 @@ Overall, the user should not notice any significant difference between using the
 \section{Performance}
 \label{sec:perf-eval}
 
-bla
+For performance testing, the \textit{Bonnie++}\footnote{\url{http://www.googlux.com/bonnie.html}} tool was used. It is a tool designed to test filesystem performance. It runs a variety of tests for reading and writing of files. On of the types of tests attempt to mimic the access pattern that regular applications have in order to provide an accurate measurement of performance. The second type of tests creates and deletes multiple small files in rapid succession.
 
-bla
+For the purpose of this project, the tool was first used on a regular location in the filesystem and then on a location where an encrypted storage was mounted. The per character tests have been skipped in favour of the per block ones. The average values resulted from multiple iterations of the tests are shown in \labelindexref{Table}{tbl:res-unenc-eval} for the unencrypted location and in \labelindexref{Table}{tbl:res-enc-eval} for the encrypted storage. The tables have been split in two lines for readability purposes.
+
+It is worth noting that although some of the results are measured in microseconds, the granularity of some tests is not a microsecond, but more close to a millisecond. The reason the values seem to have precision of a microsecond is that the values are the result of averaging the output of multiple iterations of the test.
+\newpage
+
+What also stands out is that there is not a significant difference between the two sets of values. This is because, as has been mentioned, \textit{Bonnie++} runs tests that simulate the activity of an actual application, rather than testing the disk or file system for its maximum performance. For measuring usability, this method of testing renders more realistic results.
+
+\begin{table}[ht]
+\centering
+    \includegraphics[width=\textwidth]{src/img/perf/results.pdf}
+\caption{Bonnie++ results - Unencrypted}
+\label{tbl:res-unenc-eval}
+\end{table}
+
+\begin{table}[ht]
+\centering
+    \includegraphics[width=\textwidth]{src/img/perf/results2.pdf}
+\caption{Bonnie++ results - Encrypted}
+\label{tbl:res-enc-eval}
+\end{table}
+
+The conclusion to be drawn from this is that, under regular usage conditions, the difference between a device with multi-user encryption integrated and one without it is not noticeable, especially from the user's point of view.
