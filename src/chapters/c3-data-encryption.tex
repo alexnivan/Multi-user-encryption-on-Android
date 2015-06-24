@@ -44,12 +44,12 @@ The master key is stored in a file in readable form. The file, called a \textit{
 
 \item \textbf{Randomly generated on-the-fly for each session}
 
-In cases like swap space or a /tmp encryption, it is not necessary to keep a persistent master key. Instead, a new key can be randomly generated for each session. This means that once unmounted, all files written to the partition in question can never be decrypted again.
+In cases like swap space or a /tmp encryption, it is not necessary to keep a persistent master key. Instead, a new key can be randomly generated for each session. This means that all files written to that partition can never be decrypted again after the partition is unmounted.
 
 \item \textbf{Stored in passphrase-protected form in a keyfile or on the disk itself}
 
 The master key can be protected with a secret passphrase, which will need to be entered each time the encrypted block device or folder is mounted.
-It is usually not used for de/encrypting the disk data directly, though. For example, in the case of stacked filesystem encryption, each file can be automatically assigned its own encryption key. Whenever the file is to be read/modified, this file key first needs to be decrypted using the main key, before it can itself be used to de/encrypt the file contents.
+In the case of stacked filesystem encryption, this technique is used by assigning each file its own encryption key. Whenever the file is to be read/modified, this file key first needs to be decrypted using the main key, before it can itself be used to de/encrypt the file contents.
 
 \end{enumerate}
 
@@ -78,7 +78,7 @@ The system will still be vulnerable to
 \cite{disk-enc}:
 \begin{itemize}
 \item Attackers who can break into the system while it is running and after the encrypted parts of the disk have already been unlocked and mounted.
-\item Attackers who are able to gain physical access to the computer while it is running or very shortly after it was running.
+\item Attackers who are able to physically access the computer while it is running or very shortly after it was running.
 \item A government entity which may obtain your keys/passphrases using various techniques of coercion.
 \end{itemize}
 
@@ -105,7 +105,7 @@ A more detailed comparison of block-based encryption and file-based encryption i
 
 As mentioned before, eCryptfs is a stacked file system which manages data encryption. Now, details about it and the advantages and disadvantages is brings will be presented.
 
-Originally authored by Michael Halcrow and the IBM Linux Technology Center, eCryptfs is derived from Erez Zadok's Cryptfs, and the FiST framework for stacked filesystems. eCryptfs extended Cryptfs to provide advanced key management and policy features\cite{ecryptfs-paper}.
+"Originally authored by Michael Halcrow and the IBM Linux Technology Center, eCryptfs is derived from Erez Zadok's Cryptfs, and the FiST framework for stacked filesystems\cite{ab-ecr}." eCryptfs extended Cryptfs to provide advanced key management and policy features\cite{ecryptfs-paper}.
 
 It has already been mentioned that eCryptfs uses a randomly generated File Encyption Key(FEK) for each file and that this key is also encrypted. Also noteworthy is that the FEK in its encrypted form is actually stored together with the encrypted file. This adds the possibility of transferring a file while encrypted with the ability to gain access with the proper credentials.
 
