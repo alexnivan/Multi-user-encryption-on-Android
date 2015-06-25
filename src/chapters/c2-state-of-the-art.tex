@@ -36,7 +36,7 @@ This file system will be discussed further in a subsequent chapter.
 \section{Android Device Encryption}
 \label{sec:and-dev-enc}
 
-Encryption is the process of encoding user data on an Android device using an encrypted key. Once a device is encrypted, all user-created data is automatically encrypted before committing it to disk and all reads automatically decrypt data before returning it to the calling process.
+"Encryption is the process of encoding user data on an Android device using an encrypted key\cite{andr-enc}." Once a device is encrypted, all user data is encrypted before being written it to disk and decrypted before returning it to the calling process.
 Android devices currently use dm-crypt to implement encryption.
 
 \subsection{dm-crpyt}
@@ -52,9 +52,9 @@ dm-crypt is implemented as a device mapper target. It can encrypt whole disk, pa
 
 Because Android uses dm-crypt, encryption works with Embedded MultiMediaCard (eMMC) and similar flash devices that present themselves to the kernel as block devices. Encryption is not possible with YAFFS, which operates directly to with the raw NAND flash chip.
 
-"The encryption algorithm is 128 Advanced Encryption Standard (AES\abbrev{AES}{Advanced Encryption Standard}) with chained block cipher (CBC) and ESSIV:SHA256.\abbrev{ESSIV}{Encrypted salt-sector initialization vector}\abbrev{SHA}{Secure Hash Algorithm} The master key is encrypted with 128-bit AES via calls to the OpenSSL library. 128 bits or more must be used for the key\footnote{\url{https://source.android.com/devices/tech/security/encryption/}}."
+"The encryption algorithm is 128 Advanced Encryption Standard (AES\abbrev{AES}{Advanced Encryption Standard}) with chained block cipher (CBC) and ESSIV:SHA256.\abbrev{ESSIV}{Encrypted salt-sector initialization vector}\abbrev{SHA}{Secure Hash Algorithm} The master key is encrypted with 128-bit AES via calls to the OpenSSL library. 128 bits or more must be used for the key\cite{andr-enc}."
 
-In Android 5.0, hardware-backed storage of the encryption key using Trusted Execution Environment’s (TEE) signing capability (such as in a TrustZone) has been added.
+In Android 5.0, hardware-backed storage of the encryption key using Trusted Execution Environment’s (TEE) signing capability (such as in a TrustZone) has been added\footnote{\url{https://source.android.com/devices/tech/security/encryption/}}.
 
 The two main components responsible for managing the encryption process are \textit{init} and \textit{vold}, i.e., the volume daemon which is responsible for most storage related tasks in Android. \textit{init} calls \textit{vold}, and \textit{vold} sets properties to trigger events in \textit{init}.
 
