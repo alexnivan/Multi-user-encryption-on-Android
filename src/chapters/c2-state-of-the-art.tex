@@ -27,7 +27,7 @@ The migration did not affect the higher levels of the software stack due to the 
 \subsection{eCryptfs}
 \label{sub-sec:sa-ecryptfs}
 
-eCryptfs is a stacked file system which transparently encrypts and decrypts each file using a randomly generated File Encryption Key (FEK\abbrev{FEK}{File Encryption Key}). Each FEK is in turn encrypted with a File Encryption Key Encryption Key (FEKEK\abbrev{FEKEK}{File Encryption Key Encryption Key}) either in kernel space or in user space with a daemon called \textit{ecryptfsd}.
+eCryptfs is a stacked file system which transparently encrypts and decrypts each file using a randomly generated File Encryption Key (FEK\abbrev{FEK}{File Encryption Key}). Each FEK is in turn encrypted with a File Encryption Key Encryption Key (FEKEK\abbrev{FEKEK}{File Encryption Key Encryption Key}) either in kernel space or in user space with a daemon called \textit{ecryptfsd}\cite{ecryptfs-keys}.
 
 An added benefit of the stacked file system approach is that the underlying file system can be used for the basic file and directory operations, while eCryptfs only needs to handle the encryption side.
 

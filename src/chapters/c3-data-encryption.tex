@@ -49,7 +49,7 @@ In cases like swap space or a /tmp encryption, it is not necessary to keep a per
 \item \textbf{Stored in passphrase-protected form in a keyfile or on the disk itself}
 
 The master key can be protected with a secret passphrase, which will need to be entered each time the encrypted block device or folder is mounted.
-In the case of stacked filesystem encryption, this technique is used by assigning each file its own encryption key. Whenever the file is to be read/modified, this file key first needs to be decrypted using the main key, before it can itself be used to de/encrypt the file contents.
+In the case of stacked filesystem encryption, this technique is used by assigning each file its own encryption key. Whenever the file is to be read/modified, this file key first needs to be decrypted using the master key, before it can be used to de/encrypt the file contents.
 
 \end{enumerate}
 
@@ -175,7 +175,7 @@ $ echo "/home/$USER/.secret /home/$USER/secret ecryptfs" > ~/.ecryptfs/secret.co
 \end{lstlisting}
 Note that \texttt{\$USER} should be expanded by the shell to the current username.
 
-A mount passphrase must be added to the keyring:
+A passphrase which will be used to mount the directory must be added to the keyring:
 \begin{lstlisting}[numbers=none]
 $ ecryptfs-add-passphrase
 Passphrase: 
