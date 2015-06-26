@@ -62,7 +62,7 @@ Disk encryption methods aim to provide three important properties:
 \begin{enumerate}
 \item The data on the disk should be confidential
 \item Read and write operations should both be fast, regardless of where on the disk the data is stored
-\item The overhead introduced by the encryption method should not be kept to a minimum (i.e., the amount of storage used for encrypted data should not be significantly larger than the size of plaintext)
+\item The overhead introduced by the encryption method should not be kept to a minimum (i.e., the disk space used for encrypted data should not be significantly larger than the size of plaintext)
 \end{enumerate}
 
 Disk encryption can prevent unauthorized reading of the data when the disk is
@@ -71,7 +71,7 @@ Disk encryption can prevent unauthorized reading of the data when the disk is
 \item in a place where unauthorized people might gain access while unsupervised
 \item lost or stolen
 \item in the repair shop
-\item discarded after its end-of-life
+\item discarded after it is no longer used
 \end{itemize}
 
 The system will still be vulnerable to
@@ -123,7 +123,7 @@ Key management is done in userspace for two main reasons. The first is to reduce
 \subsection{Cryptographic Operations}
 \label{sub-sec:crypt-ops-ecryptfs}
 
-Most of the data encryption is done in the kernel module, and hence eCryptfs makes use of the kernel cryptographic API to perform the encryption and the decryption operations. "One of the primary motivators in implementing eCryptfs in the kernel is to avoid the overhead of context switches between userspace and kernel space, which is frequent when dealing with pages in file I/O\cite{ecryptfs-paper}."
+Most of the data encryption is done in the kernel module, and hence eCryptfs makes use of the kernel cryptographic API to perform the its operations. "One of the primary motivators in implementing eCryptfs in the kernel is to avoid the overhead of context switches between userspace and kernel space, which is frequent when dealing with pages in file I/O\cite{ecryptfs-paper}."
 
 The underlying file format for eCryptfs is based on the OpenPGP format described in RFC2440\cite{rfc}.
 
@@ -133,7 +133,7 @@ The underlying file format for eCryptfs is based on the OpenPGP format described
 \caption{eCryptfs File Format\cite{ecryptfs-paper}}
 \end{figure}
 
-An aspect where eCryptfs deviates from the standard is the introduction of \textit{data extents}. This is done in order to accommodate random access while maintaining performance. The OpenPGP standard assumes that the operations done on the data contents of a file are atomic; there is no concept of a partially encrypted or decrypted file. The data is encrypted using what is known as a chained block cipher(CBC\abbrev{CBC}{Chained Block Cipher}). This means that each block of plaintext, with the exception of the first, is combined with the previous block ciphertext through a XOR operation before being encrpyted. Evidently, the same process must be followed when decrypting. Thus, reading a byte from a file requires decrypting all leading bytes. Conversely, writing a byte incurs encrypting all trailing bytes from that file. For large files, reading a byte towards the end of the file or writing a byte at the beginning of it would be inefficient.
+An aspect where eCryptfs deviates from the standard is the introduction of \textit{data extents}. This is done in order to accommodate random access while maintaining performance. The OpenPGP standard assumes that the operations done on the data contents of a file are atomic; there is no concept of a partial encryption or decryption. The data is encrypted using what is known as a chained block cipher(CBC\abbrev{CBC}{Chained Block Cipher}). This means that each block of plaintext, with the exception of the first, is combined with the previous block ciphertext through a XOR operation before being encrpyted. Evidently, the same process must be followed when decrypting. Thus, reading a byte from a file requires decrypting all leading bytes. Conversely, writing a byte incurs encrypting all trailing bytes from that file. For large files, reading a byte towards the end of the file or writing a byte at the beginning of it would be inefficient.
 
 Using extents, each part of a file is encrypted separately; reading or writing a byte requires operations only on the extent containing the respective byte. An extent containing initialization vectors(IV\abbrev{IV}{Initialization Vector}) precedes a group of extents which used the respective IV's (each extent has an unique IV). These initialization vectors are used to XOR the first block of data when encrypting/decrypting.
 
