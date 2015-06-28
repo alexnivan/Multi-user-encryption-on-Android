@@ -11,7 +11,7 @@ This chapter describes the testing process of the various components that compos
 
 The first level that was tested is the middleware layer presented in \labelindexref{Section}{sec:arch-multi-user}. There are three types of tests that were used for this component.
 
-The first tests the functionality of the C library (EFS Tools). The majority of the test are Unit Tests which check the functionality of each storage operation available. Additional tests are also used to ensure storage consistency.
+The first tests the functionality of the C library (EFS Tools). The majority of the tests are Unit Tests which check the functionality of each storage operation available. Additional tests are also used to ensure storage consistency.
 
 An example of a test function is listed in \labelindexref{Listing}{lst:change-passwd-eval}. The \texttt{change_passwd} function tests whether changing the password of the storage works as expected.
 
@@ -42,7 +42,7 @@ function change_passwd() {
 }
 \end{lstlisting}
 
-Note that being a unit test, it only check if the password is too short, and, if not, whether the change has occurred. In order to verify that the new password is being used, the storage lock and unlock tests must be run using the new password.
+Note that being a unit test, it only checks if the password is too short, and, if not, whether the change has occurred. In order to verify that the new password is being used, the storage lock and unlock tests must be run using the new password.
 
 In the above, \textit{adb} is the Android Debug Bridge\abbrev{adb}{Android Debug Bridge}, a command line tool used for communicating with an Android device connected through an USB port or with an emulator. \textit{adb logcat} outputs the system log, where the Android system and all applications post log messages. \textit{adb shell [command]} issues a shell command to the device.
 
@@ -53,6 +53,8 @@ The second type of tests are similar to the aforementioned. The difference is th
 The third and final type of test for this component is a stress test. It is actually closer to testing the kernel layer component. The way it operates is it creates a directory hierarchy in a normal location in the file system and a mirrored one in a secure storage. The files in the hierarchy have various sizes and access permissions and soft links are also added. At the end of this process, the resulting directory structures are compared to ensure that the storage functions properly.
 
 Due to the necessity of recursive functions when creating the directory structure, Python has been chosen for this test.
+
+All the test that were run passed, ensuring that the middleware layer provides adequate functionality.
 
 \subsection{EFS Service Tests}
 \label{sub-sec:efs-service-tests-eval}
@@ -90,12 +92,12 @@ As mentioned in \labelindexref{Section}{sub-sec:user-switch-multi-user}, an issu
 
 Applications have been tested in order to ensure that user data is properly preserved after the storage is locked and unlocked again. As with the issue above, only applications from the AOSP sources have been tested in this regard. Other applications could present some issues when storage operations are performed.
 
-Overall, the user should not notice any significant difference between using the same device with or without the multi-user encryption features present.
+Overall, the user should not notice any significant difference between using the same device with or without the multi-user encryption features present. The Quality of Experience is not affected.
 
 \section{Performance}
 \label{sec:perf-eval}
 
-For performance testing, the \textit{Bonnie++}\footnote{\url{http://www.googlux.com/bonnie.html}} tool was used. It is a tool designed to test filesystem performance. It runs a variety of tests for reading and writing of files. On of the types of tests attempt to mimic the access pattern that regular applications have in order to provide an accurate measurement of performance. The second type of tests creates and deletes multiple small files in rapid succession.
+For performance testing, the \textit{Bonnie++}\footnote{\url{http://www.googlux.com/bonnie.html}} tool was used. It is a tool designed to test filesystem performance. It runs a variety of tests for reading and writing of files. One of the types of tests attempt to mimic the access pattern that regular applications have in order to provide an accurate measurement of performance. The second type of tests creates and deletes multiple small files in rapid succession.
 
 For the purpose of this project, the tool was first used on a regular location in the filesystem and then on a location where an encrypted storage was mounted. The per character tests have been skipped in favour of the per block ones. The average values resulted from multiple iterations of the tests are shown in \labelindexref{Table}{tbl:res-unenc-eval} for the unencrypted location and in \labelindexref{Table}{tbl:res-enc-eval} for the encrypted storage. The tables have been split in two lines for readability purposes.
 

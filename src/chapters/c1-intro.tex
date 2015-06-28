@@ -1,19 +1,26 @@
 \chapter{Introduction}
 \label{chapter:intro}
 
-\section{Context and Purpose}
-\label{sec:ctx-purpose-intro}
+In Android 4.2, the possibility of having multiple users on a device was introduced for tablets\cite{and-42}. In the more recent version 5.0, this feature has been added to more devices, including phones\cite{and-50}. However, encryption remains available only at device level, while being able to protect different user's data separately is not possible. The device is unlocked once during boot and remains unlocked until it is shut down. Multi-user encryption means having the possibility to encrypt a user without affecting the others and accessing the data only with proper credentials. This means adding an extra level of protection for specific users. For the encrypted users, the data is not available without the proper credentials even if the potential attacker has physical access to the device. 
 
-In Android 4.2, the possibility of having multiple users on a device was introduced for tablets\cite{and-42}. In the more recent version 5.0, this feature has been added to more devices, including phones\cite{and-50}. However, encryption remains available only at device level, while being able to protect different user's data separately is not possible. The device is unlocked once during boot and remains unlocked until it is shut down. Multi-user encryption means having the possibility to encrypt a user without affecting the others and accessing the data only with proper credentials.
+\section{Project Description}
+\label{sec:proj-desc-intro}
 
 The solution to this problem described in this thesis relies on using file system level encryption. More precisely, the \textit{ecryptfs} Linux kernel module, which implements a stacked file system with encryption functionalities. Since Android is based on Linux, enabling this module is trivial. The difficulty comes from the lack of any supporting userspace tools in Android.
 
-This project builds a multi-user encryption system starting from the aforementioned kernel module and integrates the solution into the Android system. It implements the necessary userspace tools and then uses them from within the Android framework to It does not intend to be a fully featured solution, rather a proof of concept that encrypting each user's data separately is possible for an Android system.
+This project builds a multi-user encryption system starting from the aforementioned kernel module and integrates the solution into the Android system. It implements the necessary userspace tools and then uses them from within the Android framework to manage the separate encryption of each user.
 
-\section{Summary}
+\section{Project Objectives}
+\label{sec:proj-objs-intro}
+
+The primary objective of this project is to propose an architecture and implement multi-user encryption on Android. It does not intend to be a fully featured solution, rather a proof of concept that encrypting each user's data separately is possible for an Android system.
+
+It also aims to test the functionality and performance of such a solution to determine whether it is feasible to implement such a feature.
+
+\section{Thesis Structure}
 \label{sec:summ-intro}
 
-\textbf{Chapter 2} covers the State of the Art, offering some insight into how encryption work on Android and presenting some examples of similar solutions.
+\textbf{Chapter 2} covers the State of the Art, offering some insight into how encryption works on Android and presenting some examples of similar solutions.
 
 \textbf{Chapter 3} explains encryption more in depth and compares different methods of securing the data stored in a system. It uses the \textit{ecryptfs} module and the corresponding userspace tools available in Linux as an example.
 

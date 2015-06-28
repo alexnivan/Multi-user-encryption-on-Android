@@ -8,11 +8,11 @@ This chapter will both summarize the development and current state of the projec
 
 Multi-user systems are relatively new in the Android environment and many modifications to their architecture and functionality may appear in the future.
 
-This project achieved its goal of providing a proof of concept for separately encrypting multiple users in Android systems is possible. The basic functionalities have been implemented. Users can choose whether to encrypt their data. If they choose to do so, the data will only be accessible while the device is unlocked and the respective user is active. There are some shortcomings to the implementation, but various mechanisms can be used to minimise the effects.
+This project achieved its goal of providing a proof of concept for separately encrypting multiple users in Android systems. The basic functionalities have been implemented. Users can choose whether to encrypt their data. If they choose to do so, the data will only be accessible while the device is unlocked and the respective user is active. There are some shortcomings to the implementation, but various mechanisms can be used to minimise the effects.
 
 From a performance point of view, the differences are not visible to the end user in common usage scenarios. If applications which heavily use the disk are constantly run on the device, the performance penalty caused by the stacked filesystem could affect user experience.
 
-The parts of the project that can be used with any Android system are EFS Tools, EFS Server and EFS Service. The integration of these as well as user interface can be handled by each telephone vendor or developer as they see fit.
+The parts of the project that can be used with any Android system are EFS Tools, EFS Server and EFS Service. The integration of these parts as well as making the relevant modifications to the user interface can be handled by each telephone vendor or developer as they see fit.
 
 \section{Future Development}
 \label{sec:future-devel}
